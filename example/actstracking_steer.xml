@@ -20,11 +20,10 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <processor name="Config" />
 
     <!-- ==========  Geometry initialization  ========== -->
-    <!--<processor name="InitDD4hep"/>-->
+    <processor name="InitDD4hep"/>
     <processor name="InitACTS"/>
 
     <!-- ==========  Tracker Digitization  ========== -->
-    <!--
     <processor name="VXDBarrelDigitiser"/>
     <processor name="VXDEndcapDigitiser"/>
     <processor name="InnerPlanarDigiProcessor"/>
@@ -33,17 +32,9 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <processor name="OuterInnerEndcapPlanarDigiProcessor"/>
     <processor name="OuterPlanarDigiProcessor"/>
     <processor name="OuterEndcapPlanarDigiProcessor"/>
-    -->
+
     <!-- ==========  Tracking  ========== -->
-    <!-- At the moment the name of the final track collection for the MyTruthTrackFinder and MyExtrToTracker processors is the same, 
-         so that users can use this example to run easily both the cheater track pattern recognition (still the default for many tasks) 
-         or the real one (under final tests) -->
-    <!--
-    <if condition="Config.TrackingTruth">
-      <processor name="MyTruthTrackFinder"/>
-    </if>
-    <processor name="Refit" />
-    -->
+    <processor name="MyTruthTracking"/>
 
     <!-- ==========  Output  ========== -->
     <!--
@@ -272,8 +263,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
 
   <!-- == TruthTrackFinder parameters == -->
 
-  <processor name="MyTruthTrackFinder" type="TruthTrackFinder">
-    <parameter name="FitForward" type="bool">true</parameter>
+  <processor name="MyTruthTracking" type="ACTSTruthTrackingProc">
     <!--Define input tracker hits and relations. NB. Order must be respected -->
     <parameter name="TrackerHitCollectionNames" type="StringVec" lcioInType="TrackerHitPlane">
       VXDTrackerHits
@@ -294,44 +284,9 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <!--Name of the MCParticle input collection-->
     <parameter name="MCParticleCollectionName" type="string" lcioInType="MCParticle">MCParticle </parameter>
     <!--Silicon track Collection Name-->
-    <parameter name="SiTrackCollectionName" type="string" lcioOutType="Track">SiTracks </parameter>
+    <parameter name="TruthTrackCollectionName" type="string" lcioOutType="Track">TruthTracks</parameter>
     <!--Silicon track particle relation Collection Name-->
-    <parameter name="SiTrackRelationCollectionName" type="string" lcioOutType="LCRelation">SiTrackRelations </parameter>
-    <!--If true use the truth information to initialise the helical prefit, otherwise use prefit by fitting 3 hits-->
-    <parameter name="UseTruthInPrefit" type="bool">false </parameter>
-    <parameter name="Verbosity" type="string">SILENT </parameter>
-  </processor>
-
-  <processor name="Refit" type="RefitFinal">
-    <!--Refit processor that calls finaliseLCIOTrack after taking the trackstate from the existing track. No re-sorting of hits is done-->
-    <!--Use Energy Loss in Fit-->
-    <parameter name="EnergyLossOn" type="bool"> true </parameter>
-    <!--Name of the input track to MCParticle relation collection-->
-    <parameter name="InputRelationCollectionName" type="string" lcioInType="LCRelation"> SiTrackRelations </parameter>
-    <!--Name of the input track collection-->
-    <parameter name="InputTrackCollectionName" type="string" lcioInType="Track"> SiTracks </parameter>
-    <!--maximum allowable chi2 increment when moving from one site to another-->
-    <parameter name="Max_Chi2_Incr" type="double"> 1.79769e+30 </parameter>
-    <!--Use MultipleScattering in Fit-->
-    <parameter name="MultipleScatteringOn" type="bool"> true </parameter>
-    <!--Refit Track to MCParticle relation collection Name-->
-    <parameter name="OutputRelationCollectionName" type="string" lcioOutType="LCRelation">
-      SiTracks_Refitted_Relation
-    </parameter>
-    <!--Name of the output track collection-->
-    <parameter name="OutputTrackCollectionName" type="string" lcioOutType="Track">
-      SiTracks_Refitted
-    </parameter>
-    <!--Identifier of the reference point to use for the fit initialisation, -1 means at 0 0 0-->
-    <parameter name="ReferencePoint" type="int"> -1 </parameter>
-    <!--Smooth All Mesurement Sites in Fit-->o
-    <parameter name="SmoothOn" type="bool"> false </parameter>
-    <!--verbosity level of this processor ("DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
-    <!--parameter name="Verbosity" type="string"> DEBUG </parameter-->
-    <!--if true extrapolation in the forward direction (in-out), otherwise backward (out-in)-->
-    <parameter name="extrapolateForward" type="bool"> true </parameter>
-    <!--Final minimum number of track clusters-->
-    <parameter name="MinClustersOnTrackAfterFit" type="int">3 </parameter>
+    <parameter name="TruthTrackRelationCollectionName" type="string" lcioOutType="LCRelation">TruthTrackRelations</parameter>
   </processor>
 
   <!-- ======================================================================================================== -->

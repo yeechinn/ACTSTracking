@@ -9,6 +9,10 @@
 
 //! \brief Load tracker geometry for ACTS
 /**
+ * Assumes that the global TGeoManager with the geometry
+ * description is already loaded. For example, via the
+ * InitializeDD4hep processor.
+ *
  * @author Karol Krizka
  * @version $Id$
  */
@@ -48,7 +52,6 @@ class ACTSDetectorLoaderProc : public marlin::Processor
   void buildDetector();
 
  protected:
-  std::string _tgeoFile {};
   std::string _matFile {};
 
  private:

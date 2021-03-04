@@ -15,8 +15,6 @@
 #include <Acts/Plugins/TGeo/TGeoDetectorElement.hpp>
 #include <Acts/Plugins/TGeo/TGeoLayerBuilder.hpp>
 
-#include <TGeoManager.h>
-
 ACTSDetectorLoaderProc aACTSDetectorLoaderProc ;
 
 ACTSDetectorLoaderProc::ACTSDetectorLoaderProc()
@@ -26,12 +24,6 @@ ACTSDetectorLoaderProc::ACTSDetectorLoaderProc()
   _description = "Load the tracking detector for ACTS." ;
 
   // configuration
-  registerProcessorParameter( "TGeoFile" ,
-                              "Path to the TGeo dump of the tracking detector",
-			      _tgeoFile,
-			      std::string("")
-			      );
-
   registerProcessorParameter( "MatFile" ,
                               "Path to the material description json file",
 			      _matFile,
@@ -154,9 +146,6 @@ void ACTSDetectorLoaderProc::buildDetector()
     volumeBuilders.push_back(beamPipeVolumeBuilder);
   }
   */
-
-  // import the file from
-  TGeoManager::Import(_tgeoFile.c_str());
 
   //
   // Detector definition
