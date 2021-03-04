@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="us-ascii"?>
+<!--
+?xml-stylesheet type="text/xsl"
+href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
+-->
+<!-- ?xml-stylesheet type="text/xsl" href="marlin.xsl"? -->
+
+<marlin xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://ilcsoft.desy.de/marlin/marlin.xsd">
+
+  <!-- ======================================================================================================== -->
+  <!-- ======================================================================================================== -->
+  <!-- == List of processors to execute                                                                      == -->
+  <!-- ======================================================================================================== -->
+  <!-- ======================================================================================================== -->
+
+  <execute>
+    <!-- ========== setup  ========== -->
+    <processor name="MyAIDAProcessor"/>
+    <processor name="EventNumber" />
+    <processor name="Config" />
+
+    <!-- ==========  Geometry initialization  ========== -->
+    <!--<processor name="InitDD4hep"/>-->
+    <processor name="InitACTS"/>
+
+    <!-- ==========  Tracker Digitization  ========== -->
+    <!--
+    <processor name="VXDBarrelDigitiser"/>
+    <processor name="VXDEndcapDigitiser"/>
+    <processor name="InnerPlanarDigiProcessor"/>
+    <processor name="InnerEndcapPlanarDigiProcessor"/>
+    <processor name="OuterInnerPlanarDigiProcessor"/>
+    <processor name="OuterInnerEndcapPlanarDigiProcessor"/>
+    <processor name="OuterPlanarDigiProcessor"/>
+    <processor name="OuterEndcapPlanarDigiProcessor"/>
+    -->
+    <!-- ==========  Tracking  ========== -->
+    <!-- At the moment the name of the final track collection for the MyTruthTrackFinder and MyExtrToTracker processors is the same, 
+         so that users can use this example to run easily both the cheater track pattern recognition (still the default for many tasks) 
+         or the real one (under final tests) -->
+    <!--
+    <if condition="Config.TrackingTruth">
+      <processor name="MyTruthTrackFinder"/>
+    </if>
+    <processor name="Refit" />
+    -->
+
+    <!-- ==========  Output  ========== -->
+    <!--
+    <processor name="MergeHits" />
+    <processor name="MyLCTuple" />
+    -->
+  </execute>
+
+
+  <!-- ======================================================================================================== -->
+  <!-- ======================================================================================================== -->
+  <!-- == Global setup                                                                                       == -->
+  <!-- ======================================================================================================== -->
+  <!-- ======================================================================================================== -->
+
+  <processor name="Config" type="CLICRecoConfig" >
+    <parameter name="Verbosity" options="DEBUG0-9,MESSAGE0-9,WARNING0-9,ERROR0-9,SILENT"> DEBUG7  </parameter>
+    <!--Which option to use for Overlay: False, BIB. Then use, e.g., Config.OverlayFalse in the condition-->
+    <parameter name="Overlay" type="string">False</parameter>
+    <!--Possible values and conditions for option Overlay-->
+    <parameter name="OverlayChoices" type="StringVec">False BIB</parameter>
+    <!--Which option to use for Tracking: Truth, ConformalPlusExtrapolator, Conformal. Then use, e.g., Config.TrackingTruth in the condition-->
+    <parameter name="Tracking" type="string">Truth</parameter>
+    <!--Possible values and conditions for option Tracking-->
+    <parameter name="TrackingChoices" type="StringVec">Truth Conformal</parameter>
+    <!--Which option to use for VertexUnconstrained: ON, OFF. Then use, e.g., Config.VertexUnconstrainedOFF in the condition-->
+    <parameter name="VertexUnconstrained" type="string">OFF </parameter>
+    <!--Possible values and conditions for option Tracking-->
+    <parameter name="VertexUnconstrainedChoices" type="StringVec">ON OFF  </parameter>
+    <!--verbosity level of this processor ("DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
+    <parameter name="Verbosity" options="DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT"> MESSAGE  </parameter> 
+  </processor>
+
+  <processor name="EventNumber" type="Statusmonitor">
+    <parameter name="HowOften" type="int">1 </parameter>
+    <parameter name="Verbosity" type="string"> MESSAGE </parameter>
+  </processor>
+
+  <processor name="MyAIDAProcessor" type="AIDAProcessor">
+    <parameter name="FileName" type="string">
+      lctuple
+    </parameter>
+    <parameter name="FileType" type="string">root</parameter>
+  </processor>
+
+  <global>
+    <parameter name="LCIOInputFiles">
+      muonGun_sim.slcio
+    </parameter>
+    <parameter name="MaxRecordNumber" value="-1" />
+    <parameter name="SkipNEvents" value="0" />
+    <parameter name="SupressCheck" value="false" />
+    <parameter name="Verbosity"	options="DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT">MESSAGE0</parameter>
+  </global>
+
+  <!-- ======================================================================================================== -->
+  <!-- ======================================================================================================== -->
+  <!-- == DD4hep configuration                                                                               == -->
+  <!-- ======================================================================================================== -->
+  <!-- ======================================================================================================== -->
+  
+  <processor name="InitDD4hep" type="InitializeDD4hep">
+    <!--InitializeDD4hep reads a compact xml file and initializes the dd4hep::Detector object-->
+    <!--Name of the DD4hep compact xml file to load-->
+    <parameter name="DD4hepXMLFile" type="string">
+      ${CMAKE_SOURCE_DIR}/data/MuColl_v1_mod0/MuColl_v1_mod0.xml
+    </parameter>
+    <!--Alternate name for EncodingStringParameterName-->
+    <!--If given, the Compact File parameter of that name will be used as argument to LCTrackerCellID::set_encoding_string()-->
+    <parameter name="EncodingStringParameterName" type="string"> GlobalTrackerReadoutID  </parameter>
+    <!--verbosity level of this processor ("DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
+    <!--parameter name="Verbosity" type="string">DEBUG </parameter-->
+  </processor>
+
+  <processor name="InitACTS" type="ACTSDetectorLoaderProc">
+    <!--Load tracking detector into ACTS-->
+    <!--Path to TGeo dump-->
+    <parameter name="TGeoFile" type="string">
+      ${PROJECT_SOURCE_DIR}/data/MuColl_v1_mod0.root
+    </parameter>
+    <!--Path to material description-->
+    <parameter name="MatFile" type="string">
+      ${PROJECT_SOURCE_DIR}/data/material-maps.json
+    </parameter>
+  </processor>
+  
+  <!-- ======================================================================================================== -->
+  <!-- ======================================================================================================== -->
+  <!-- == Tracker Digitizer configuration                                                                    == -->
+  <!-- ======================================================================================================== -->
+  <!-- ======================================================================================================== -->
+
+  <processor name="VXDBarrelDigitiser" type="DDPlanarDigiProcessor">
+    <parameter name="SubDetectorName" type="string"> Vertex </parameter>
+    <parameter name="IsStrip" type="bool">false </parameter>
+    <parameter name="ResolutionU" type="float"> 0.005 </parameter>
+    <parameter name="ResolutionV" type="float"> 0.005 </parameter>
+    <parameter name="SimTrackHitCollectionName" type="string" lcioInType="SimTrackerHit"> VertexBarrelCollection </parameter>
+    <parameter name="SimTrkHitRelCollection" type="string" lcioOutType="LCRelation"> VXDTrackerHitRelations </parameter>
+    <parameter name="TrackerHitCollectionName" type="string" lcioOutType="TrackerHitPlane"> VXDTrackerHits </parameter>
+    <parameter name="ResolutionT" type="FloatVec"> 0.05  </parameter>
+    <parameter name="UseTimeWindow" type="bool"> true </parameter>
+    <parameter name="CorrectTimesForPropagation" type="bool" value="true"/>
+    <parameter name="TimeWindowMin" type="float"> -0.15 </parameter>
+    <parameter name="TimeWindowMax" type="float"> 0.15 </parameter>
+    <parameter name="Verbosity" type="string"> WARNING </parameter>
+  </processor>
+
+  <processor name="VXDEndcapDigitiser" type="DDPlanarDigiProcessor">
+    <parameter name="SubDetectorName" type="string"> Vertex </parameter>
+    <parameter name="IsStrip" type="bool">false </parameter>
+    <parameter name="ResolutionU" type="float"> 0.005 </parameter>
+    <parameter name="ResolutionV" type="float"> 0.005 </parameter>
+    <parameter name="SimTrackHitCollectionName" type="string" lcioInType="SimTrackerHit"> VertexEndcapCollection </parameter>
+    <parameter name="SimTrkHitRelCollection" type="string" lcioOutType="LCRelation"> VXDEndcapTrackerHitRelations </parameter>
+    <parameter name="TrackerHitCollectionName" type="string" lcioOutType="TrackerHitPlane"> VXDEndcapTrackerHits </parameter>
+    <parameter name="ResolutionT" type="FloatVec"> 0.05  </parameter>
+    <parameter name="UseTimeWindow" type="bool"> true </parameter>
+    <parameter name="CorrectTimesForPropagation" type="bool" value="true"/>
+    <parameter name="TimeWindowMin" type="float"> -0.15 </parameter>
+    <parameter name="TimeWindowMax" type="float"> 0.15 </parameter>
+    <parameter name="Verbosity" type="string"> WARNING </parameter>
+  </processor>
+
+  <processor name="InnerPlanarDigiProcessor" type="DDPlanarDigiProcessor">
+    <parameter name="SubDetectorName" type="string"> InnerTrackers </parameter>
+    <parameter name="IsStrip" type="bool"> false </parameter>
+    <parameter name="ResolutionU" type="float"> 0.010 </parameter>
+    <parameter name="ResolutionV" type="float"> 0.010 </parameter>
+    <parameter name="SimTrackHitCollectionName" type="string" lcioInType="SimTrackerHit"> InnerTrackerBarrelCollection </parameter>
+    <parameter name="SimTrkHitRelCollection" type="string" lcioOutType="LCRelation"> InnerTrackerBarrelHitsRelations </parameter>
+    <parameter name="TrackerHitCollectionName" type="string" lcioOutType="TrackerHitPlane"> ITrackerHits </parameter>
+    <parameter name="ResolutionT" type="FloatVec"> 0.1  </parameter>
+    <parameter name="UseTimeWindow" type="bool"> true </parameter>
+    <parameter name="CorrectTimesForPropagation" type="bool" value="true"/>
+    <parameter name="TimeWindowMin" type="float"> -0.3 </parameter>
+    <parameter name="TimeWindowMax" type="float"> 0.3 </parameter>
+    <parameter name="Verbosity" type="string"> WARNING </parameter>
+  </processor>
+
+  <processor name="InnerEndcapPlanarDigiProcessor" type="DDPlanarDigiProcessor">
+    <parameter name="SubDetectorName" type="string"> InnerTrackers </parameter>
+    <parameter name="IsStrip" type="bool"> false </parameter>
+    <parameter name="ResolutionU" type="float"> 0.010 </parameter>
+    <parameter name="ResolutionV" type="float"> 0.010 </parameter>
+    <parameter name="SimTrackHitCollectionName" type="string" lcioInType="SimTrackerHit"> InnerTrackerEndcapCollection </parameter>
+    <parameter name="SimTrkHitRelCollection" type="string" lcioOutType="LCRelation"> InnerTrackerEndcapHitsRelations </parameter>
+    <parameter name="TrackerHitCollectionName" type="string" lcioOutType="TrackerHitPlane"> ITrackerEndcapHits </parameter>
+    <parameter name="ResolutionT" type="FloatVec"> 0.1  </parameter>
+    <parameter name="UseTimeWindow" type="bool"> true </parameter>
+    <parameter name="CorrectTimesForPropagation" type="bool" value="true"/>
+    <parameter name="TimeWindowMin" type="float"> -0.3 </parameter>
+    <parameter name="TimeWindowMax" type="float"> 0.3 </parameter>
+    <parameter name="Verbosity" type="string"> WARNING </parameter>
+  </processor>
+
+  <processor name="OuterInnerPlanarDigiProcessor" type="DDPlanarDigiProcessor">
+    <parameter name="SubDetectorName" type="string"> OuterInnerTrackers </parameter>
+    <parameter name="IsStrip" type="bool"> false </parameter>
+    <parameter name="ResolutionU" type="float"> 0.010 </parameter>
+    <parameter name="ResolutionV" type="float"> 0.010 </parameter>
+    <parameter name="SimTrackHitCollectionName" type="string" lcioInType="SimTrackerHit"> OuterInnerTrackerBarrelCollection </parameter>
+    <parameter name="SimTrkHitRelCollection" type="string" lcioOutType="LCRelation"> OuterInnerTrackerBarrelHitsRelations </parameter>
+    <parameter name="TrackerHitCollectionName" type="string" lcioOutType="TrackerHitPlane"> OITrackerHits </parameter>
+    <parameter name="ResolutionT" type="FloatVec"> 0.1  </parameter>
+    <parameter name="UseTimeWindow" type="bool"> true </parameter>
+    <parameter name="CorrectTimesForPropagation" type="bool" value="true"/>
+    <parameter name="TimeWindowMin" type="float"> -0.3 </parameter>
+    <parameter name="TimeWindowMax" type="float"> 0.3 </parameter>
+    <parameter name="Verbosity" type="string"> WARNING </parameter>
+  </processor>
+
+  <processor name="OuterInnerEndcapPlanarDigiProcessor" type="DDPlanarDigiProcessor">
+    <parameter name="SubDetectorName" type="string"> OuterInnerTrackers </parameter>
+    <parameter name="IsStrip" type="bool"> false </parameter>
+    <parameter name="ResolutionU" type="float"> 0.010 </parameter>
+    <parameter name="ResolutionV" type="float"> 0.010 </parameter>
+    <parameter name="SimTrackHitCollectionName" type="string" lcioInType="SimTrackerHit"> OuterInnerTrackerEndcapCollection </parameter>
+    <parameter name="SimTrkHitRelCollection" type="string" lcioOutType="LCRelation"> OuterInnerTrackerEndcapHitsRelations </parameter>
+    <parameter name="TrackerHitCollectionName" type="string" lcioOutType="TrackerHitPlane"> OITrackerEndcapHits </parameter>
+    <parameter name="ResolutionT" type="FloatVec"> 0.1  </parameter>
+    <parameter name="UseTimeWindow" type="bool"> true </parameter>
+    <parameter name="CorrectTimesForPropagation" type="bool" value="true"/>
+    <parameter name="TimeWindowMin" type="float"> -0.3 </parameter>
+    <parameter name="TimeWindowMax" type="float"> 0.3 </parameter>
+    <parameter name="Verbosity" type="string"> WARNING </parameter>
+  </processor>
+
+  <processor name="OuterPlanarDigiProcessor" type="DDPlanarDigiProcessor">
+    <parameter name="SubDetectorName" type="string"> OuterTrackers </parameter>
+    <parameter name="IsStrip" type="bool"> false </parameter>
+    <parameter name="ResolutionU" type="float"> 0.010 </parameter>
+    <parameter name="ResolutionV" type="float"> 0.010 </parameter>
+    <parameter name="SimTrackHitCollectionName" type="string" lcioInType="SimTrackerHit"> OuterTrackerBarrelCollection </parameter>
+    <parameter name="SimTrkHitRelCollection" type="string" lcioOutType="LCRelation"> OuterTrackerBarrelHitsRelations </parameter>
+    <parameter name="TrackerHitCollectionName" type="string" lcioOutType="TrackerHitPlane"> OTrackerHits </parameter>
+    <parameter name="ResolutionT" type="FloatVec"> 0.1  </parameter>
+    <parameter name="UseTimeWindow" type="bool"> true </parameter>
+    <parameter name="CorrectTimesForPropagation" type="bool" value="true"/>
+    <parameter name="TimeWindowMin" type="float"> -0.3 </parameter>
+    <parameter name="TimeWindowMax" type="float"> 0.3 </parameter>
+    <parameter name="Verbosity" type="string"> WARNING </parameter>
+  </processor>
+
+  <processor name="OuterEndcapPlanarDigiProcessor" type="DDPlanarDigiProcessor">
+    <parameter name="SubDetectorName" type="string"> OuterTrackers </parameter>
+    <parameter name="IsStrip" type="bool"> false </parameter>
+    <parameter name="ResolutionU" type="float"> 0.010 </parameter>
+    <parameter name="ResolutionV" type="float"> 0.010 </parameter>
+    <parameter name="SimTrackHitCollectionName" type="string" lcioInType="SimTrackerHit"> OuterTrackerEndcapCollection </parameter>
+    <parameter name="SimTrkHitRelCollection" type="string" lcioOutType="LCRelation"> OuterTrackerEndcapHitsRelations </parameter>
+    <parameter name="TrackerHitCollectionName" type="string" lcioOutType="TrackerHitPlane"> OTrackerEndcapHits </parameter>
+    <parameter name="ResolutionT" type="FloatVec"> 0.1  </parameter>
+    <parameter name="UseTimeWindow" type="bool"> true </parameter>
+    <parameter name="CorrectTimesForPropagation" type="bool" value="true"/>
+    <parameter name="TimeWindowMin" type="float"> -0.3 </parameter>
+    <parameter name="TimeWindowMax" type="float"> 0.3 </parameter>
+    <parameter name="Verbosity" type="string"> WARNING </parameter>
+  </processor>
+
+  <!-- ======================================================================================================== -->
+  <!-- ======================================================================================================== -->
+  <!-- == Track finding configuration                                                                        == -->
+  <!-- ======================================================================================================== -->
+  <!-- ======================================================================================================== -->
+
+  <!-- == TruthTrackFinder parameters == -->
+
+  <processor name="MyTruthTrackFinder" type="TruthTrackFinder">
+    <parameter name="FitForward" type="bool">true</parameter>
+    <!--Define input tracker hits and relations. NB. Order must be respected -->
+    <parameter name="TrackerHitCollectionNames" type="StringVec" lcioInType="TrackerHitPlane">
+      VXDTrackerHits
+      ITrackerHits
+      OTrackerHits
+      VXDEndcapTrackerHits
+      ITrackerEndcapHits
+      OTrackerEndcapHits
+    </parameter>
+    <parameter name="SimTrackerHitRelCollectionNames" type="StringVec" lcioInType="LCRelation">
+      VXDTrackerHitRelations
+      InnerTrackerBarrelHitsRelations
+      OuterTrackerBarrelHitsRelations
+      VXDEndcapTrackerHitRelations
+      InnerTrackerEndcapHitsRelations
+      OuterTrackerEndcapHitsRelations
+    </parameter>
+    <!--Name of the MCParticle input collection-->
+    <parameter name="MCParticleCollectionName" type="string" lcioInType="MCParticle">MCParticle </parameter>
+    <!--Silicon track Collection Name-->
+    <parameter name="SiTrackCollectionName" type="string" lcioOutType="Track">SiTracks </parameter>
+    <!--Silicon track particle relation Collection Name-->
+    <parameter name="SiTrackRelationCollectionName" type="string" lcioOutType="LCRelation">SiTrackRelations </parameter>
+    <!--If true use the truth information to initialise the helical prefit, otherwise use prefit by fitting 3 hits-->
+    <parameter name="UseTruthInPrefit" type="bool">false </parameter>
+    <parameter name="Verbosity" type="string">SILENT </parameter>
+  </processor>
+
+  <processor name="Refit" type="RefitFinal">
+    <!--Refit processor that calls finaliseLCIOTrack after taking the trackstate from the existing track. No re-sorting of hits is done-->
+    <!--Use Energy Loss in Fit-->
+    <parameter name="EnergyLossOn" type="bool"> true </parameter>
+    <!--Name of the input track to MCParticle relation collection-->
+    <parameter name="InputRelationCollectionName" type="string" lcioInType="LCRelation"> SiTrackRelations </parameter>
+    <!--Name of the input track collection-->
+    <parameter name="InputTrackCollectionName" type="string" lcioInType="Track"> SiTracks </parameter>
+    <!--maximum allowable chi2 increment when moving from one site to another-->
+    <parameter name="Max_Chi2_Incr" type="double"> 1.79769e+30 </parameter>
+    <!--Use MultipleScattering in Fit-->
+    <parameter name="MultipleScatteringOn" type="bool"> true </parameter>
+    <!--Refit Track to MCParticle relation collection Name-->
+    <parameter name="OutputRelationCollectionName" type="string" lcioOutType="LCRelation">
+      SiTracks_Refitted_Relation
+    </parameter>
+    <!--Name of the output track collection-->
+    <parameter name="OutputTrackCollectionName" type="string" lcioOutType="Track">
+      SiTracks_Refitted
+    </parameter>
+    <!--Identifier of the reference point to use for the fit initialisation, -1 means at 0 0 0-->
+    <parameter name="ReferencePoint" type="int"> -1 </parameter>
+    <!--Smooth All Mesurement Sites in Fit-->o
+    <parameter name="SmoothOn" type="bool"> false </parameter>
+    <!--verbosity level of this processor ("DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
+    <!--parameter name="Verbosity" type="string"> DEBUG </parameter-->
+    <!--if true extrapolation in the forward direction (in-out), otherwise backward (out-in)-->
+    <parameter name="extrapolateForward" type="bool"> true </parameter>
+    <!--Final minimum number of track clusters-->
+    <parameter name="MinClustersOnTrackAfterFit" type="int">3 </parameter>
+  </processor>
+
+  <!-- ======================================================================================================== -->
+  <!-- ======================================================================================================== -->
+  <!-- == LCTuple configuration                                                                              == -->
+  <!-- ======================================================================================================== -->
+  <!-- ======================================================================================================== -->
+
+  <processor name="MergeHits" type="MergeCollections">
+    <parameter name="InputCollections" type="StringVec">VXDTrackerHits VXDEndcapTrackerHits ITrackerHits ITrackerEndcapHits OITrackerHits OITrackerEndcapHits OTrackerHits OTrackerEndcapHits</parameter>
+    <parameter name="OutputCollection" type="string"> HitsCollection </parameter>
+  </processor>
+
+ <processor name="MyLCTuple" type="LCTuple">
+   <!--LCTuple creates a ROOT TTRee with a column wise ntuple from LCIO collections ....-->
+
+   <!--Name of the MCParticle collection-->
+   <parameter name="MCParticleCollection" type="string" lcioInType="MCParticle">MCParticle</parameter>
+
+   <!--Name of the TrackerHit collection-->
+   <parameter name="TrackerHitCollection" type="string" lcioInType="TrackerHit">HitsCollection</parameter>
+
+    <!--Name of the Track collection-->
+    <parameter name="TrackCollection" type="string" lcioInType="Track">SiTracks_Refitted</parameter>
+
+    <!--Relations-->
+    <parameter name="LCRelationCollections" type="string" lcioInType="LCRelation">SiTracks_Refitted_Relation</parameter>
+    <parameter name="LCRelationPrefixes" type="string">tr2mc</parameter>
+
+   <!--verbosity level of this processor ("DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
+   <parameter name="Verbosity" type="string">DEBUG </parameter>
+ </processor>
+
+</marlin>
