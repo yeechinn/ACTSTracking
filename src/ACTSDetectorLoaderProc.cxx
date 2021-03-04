@@ -1,17 +1,55 @@
 #include "ACTSDetectorLoaderProc.hxx"
 
-ACTSDetectorLoaderProc aACTSDetectorLoaderProc ;
+#include <Acts/Geometry/CylinderVolumeBuilder.hpp>
+#include <Acts/Geometry/CylinderVolumeHelper.hpp>
+#include <Acts/Geometry/ITrackingVolumeBuilder.hpp>
+#include <Acts/Geometry/LayerArrayCreator.hpp>
+#include <Acts/Geometry/LayerCreator.hpp>
+#include <Acts/Geometry/ProtoLayerHelper.hpp>
+#include <Acts/Geometry/SurfaceArrayCreator.hpp>
+#include <Acts/Geometry/TrackingGeometryBuilder.hpp>
+#include <Acts/Geometry/TrackingVolumeArrayCreator.hpp>
 
+#include <Acts/Plugins/Json/JsonMaterialDecorator.hpp>
+
+#include <Acts/Plugins/TGeo/TGeoDetectorElement.hpp>
+#include <Acts/Plugins/TGeo/TGeoLayerBuilder.hpp>
+
+#include <TGeoManager.h>
+
+ACTSDetectorLoaderProc aACTSDetectorLoaderProc ;
 
 ACTSDetectorLoaderProc::ACTSDetectorLoaderProc()
   : Processor("ACTSDetectorLoaderProc")
 {
   // modify processor description
   _description = "Load the tracking detector for ACTS." ;
+
+  // configuration
+  registerProcessorParameter( "TGeoFile" ,
+                              "Path to the TGeo dump of the tracking detector",
+			      _tgeoFile,
+			      std::string("")
+			      );
+
+  registerProcessorParameter( "MatFile" ,
+                              "Path to the material description json file",
+			      _matFile,
+			      std::string("")
+			      );
 }
 
 void ACTSDetectorLoaderProc::init()
-{ }
+{
+  streamlog_out(MESSAGE) << " -------------------------------------" << std::endl
+                         << " ---- Initializing tracker from TGeo file  " << _tgeoFile << " ... " << std::endl ;
+
+  buildDetector();
+  
+  streamlog_out( MESSAGE ) // << " ---- instantiated  trgeometry for detector " << theDetector.header().name()  << std::endl
+                            << " -------------------------------------" << std::endl ;
+
+}
 
 void ACTSDetectorLoaderProc::processRunHeader( LCRunHeader* run )
 { }
@@ -24,3 +62,518 @@ void ACTSDetectorLoaderProc::check( LCEvent * evt )
 
 void ACTSDetectorLoaderProc::end()
 { }
+
+void ACTSDetectorLoaderProc::buildDetector()
+{
+  // Logging
+  Acts::Logging::Level surfaceLogLevel = Acts::Logging::INFO;
+  Acts::Logging::Level layerLogLevel = Acts::Logging::INFO;
+  Acts::Logging::Level volumeLogLevel = Acts::Logging::INFO;
+
+  // Material description
+  std::shared_ptr<const Acts::IMaterialDecorator> matDeco = nullptr;
+  // Set up the converter first
+  Acts::JsonGeometryConverter::Config jsonGeoConvConfig;
+  // Set up the json-based decorator
+  matDeco = std::make_shared<const Acts::JsonMaterialDecorator>(
+      jsonGeoConvConfig, _matFile);
+  
+  // configure surface array creator
+  Acts::SurfaceArrayCreator::Config sacConfig;
+  auto surfaceArrayCreator = std::make_shared<const Acts::SurfaceArrayCreator>(
+      sacConfig,
+      Acts::getDefaultLogger("SurfaceArrayCreator", surfaceLogLevel));
+
+  // configure the proto layer helper
+  Acts::ProtoLayerHelper::Config plhConfig;
+  auto protoLayerHelper = std::make_shared<const Acts::ProtoLayerHelper>(
+      plhConfig, Acts::getDefaultLogger("ProtoLayerHelper", layerLogLevel));
+  
+  // configure the layer creator that uses the surface array creator
+  Acts::LayerCreator::Config lcConfig;
+  lcConfig.surfaceArrayCreator = surfaceArrayCreator;
+  auto layerCreator = std::make_shared<const Acts::LayerCreator>(
+      lcConfig, Acts::getDefaultLogger("LayerCreator", layerLogLevel));
+
+  // configure the layer array creator
+  Acts::LayerArrayCreator::Config lacConfig;
+  auto layerArrayCreator = std::make_shared<const Acts::LayerArrayCreator>(
+      lacConfig, Acts::getDefaultLogger("LayerArrayCreator", layerLogLevel));
+
+  // tracking volume array creator
+  Acts::TrackingVolumeArrayCreator::Config tvacConfig;
+  auto tVolumeArrayCreator =
+      std::make_shared<const Acts::TrackingVolumeArrayCreator>(
+          tvacConfig,
+          Acts::getDefaultLogger("TrackingVolumeArrayCreator", volumeLogLevel));
+
+  // configure the cylinder volume helper
+  Acts::CylinderVolumeHelper::Config cvhConfig;
+  cvhConfig.layerArrayCreator = layerArrayCreator;
+  cvhConfig.trackingVolumeArrayCreator = tVolumeArrayCreator;
+  auto cylinderVolumeHelper =
+      std::make_shared<const Acts::CylinderVolumeHelper>(
+          cvhConfig,
+          Acts::getDefaultLogger("CylinderVolumeHelper", volumeLogLevel));
+
+
+  //-------------------------------------------------------------------------------------
+  // list the volume builders
+  std::list<std::shared_ptr<const Acts::ITrackingVolumeBuilder>> volumeBuilders;
+
+  /**
+   * Disable for now
+  // Create a beam pipe if configured to do so
+  auto beamPipeParameters =
+      vm["geo-tgeo-bp-parameters"].template as<read_range>();
+  if (beamPipeParameters.size() > 2) {
+    /// configure the beam pipe layer builder
+    Acts::PassiveLayerBuilder::Config bplConfig;
+    bplConfig.layerIdentification = "BeamPipe";
+    bplConfig.centralLayerRadii = std::vector<double>(1, beamPipeParameters[0]);
+    bplConfig.centralLayerHalflengthZ =
+        std::vector<double>(1, beamPipeParameters[1]);
+    bplConfig.centralLayerThickness =
+        std::vector<double>(1, beamPipeParameters[2]);
+    auto beamPipeBuilder = std::make_shared<const Acts::PassiveLayerBuilder>(
+        bplConfig,
+        Acts::getDefaultLogger("BeamPipeLayerBuilder", layerLogLevel));
+    // create the volume for the beam pipe
+    Acts::CylinderVolumeBuilder::Config bpvConfig;
+    bpvConfig.trackingVolumeHelper = cylinderVolumeHelper;
+    bpvConfig.volumeName = "BeamPipe";
+    bpvConfig.layerBuilder = beamPipeBuilder;
+    bpvConfig.layerEnvelopeR = {1. * Acts::UnitConstants::mm,
+                                1. * Acts::UnitConstants::mm};
+    bpvConfig.buildToRadiusZero = true;
+    auto beamPipeVolumeBuilder =
+        std::make_shared<const Acts::CylinderVolumeBuilder>(
+            bpvConfig,
+            Acts::getDefaultLogger("BeamPipeVolumeBuilder", volumeLogLevel));
+    // add to the list of builders
+    volumeBuilders.push_back(beamPipeVolumeBuilder);
+  }
+  */
+
+  // import the file from
+  TGeoManager::Import(_tgeoFile.c_str());
+
+  //
+  // Detector definition
+  std::vector<Acts::TGeoLayerBuilder::Config> layerBuilderConfigs;
+
+  // TODO: Make this configurable from a file
+  { // Vertex
+    Acts::TGeoLayerBuilder::Config layerBuilderConfig;
+    layerBuilderConfig.configurationName = "Vertex";
+    layerBuilderConfig.autoSurfaceBinning = true;
+
+    // AutoBinning
+    std::vector<std::pair<double, double>> binTolerances{(int)Acts::binValues,
+                                                         {0., 0.}};
+    binTolerances[Acts::binR  ] = {5,5};
+    binTolerances[Acts::binZ  ] = {5,5};
+    binTolerances[Acts::binPhi] = {0.025,0.025};
+    layerBuilderConfig.surfaceBinMatcher = Acts::SurfaceBinningMatcher(binTolerances);
+
+    { // negative endcap
+      // Create the layer config object and fill it
+      Acts::TGeoLayerBuilder::LayerConfig lConfig;
+      lConfig.volumeName = "VertexEndcap*";
+      lConfig.sensorNames = {"sensor*"};
+      lConfig.localAxes = "XzY";
+
+      // Fill the parsing restrictions in r
+      lConfig.parseRanges.push_back({Acts::binR, {0, 120}});
+
+      // Fill the parsing restrictions in z
+      lConfig.parseRanges.push_back({Acts::binZ, {-285, -70}});
+
+      // Fill the layer splitting parameters in z
+      lConfig.splitConfigs.push_back({Acts::binZ, 1});
+
+      // Save
+      layerBuilderConfig.layerConfigurations[0].push_back(lConfig);
+    }
+
+    { // barrel
+      // Create the layer config object and fill it
+      Acts::TGeoLayerBuilder::LayerConfig lConfig;
+      lConfig.volumeName = "VertexBarrel*";
+      lConfig.sensorNames = {"sensor*"};
+      lConfig.localAxes = "YZX";
+
+      // Fill the parsing restrictions in r
+      lConfig.parseRanges.push_back({Acts::binR, {0, 120}});
+
+      // Fill the layer splitting parameters in r
+      lConfig.splitConfigs.push_back({Acts::binR, 0.1});
+
+      // Fill the parsing restrictions in z
+      lConfig.parseRanges.push_back({Acts::binZ, {-70,70}});
+
+      // Save
+      layerBuilderConfig.layerConfigurations[1].push_back(lConfig);
+    }
+
+    { // positive endcap
+      // Create the layer config object and fill it
+      Acts::TGeoLayerBuilder::LayerConfig lConfig;
+      lConfig.volumeName = "VertexEndcap*";
+      lConfig.sensorNames = {"sensor*"};
+      lConfig.localAxes = "XzY";
+
+      // Fill the parsing restrictions in r
+      lConfig.parseRanges.push_back({Acts::binR, {0, 120}});
+
+      // Fill the parsing restrictions in z
+      lConfig.parseRanges.push_back({Acts::binZ, {70,285}});
+
+      // Fill the layer splitting parameters in z
+      lConfig.splitConfigs.push_back({Acts::binZ, 1});      
+
+      // Save
+      layerBuilderConfig.layerConfigurations[2].push_back(lConfig);
+    }
+    
+    // Save
+    layerBuilderConfigs.push_back(layerBuilderConfig);
+  }
+
+  { // InnerTracker
+    Acts::TGeoLayerBuilder::Config layerBuilderConfig;
+    layerBuilderConfig.configurationName = "InnerTrackers";
+    layerBuilderConfig.autoSurfaceBinning = true;
+
+    // AutoBinning
+    std::vector<std::pair<double, double>> binTolerances{(int)Acts::binValues,
+                                                         {0., 0.}};
+    binTolerances[Acts::binR  ] = {5,5};
+    binTolerances[Acts::binZ  ] = {5,5};
+    binTolerances[Acts::binPhi] = {0.025,0.025};
+    layerBuilderConfig.surfaceBinMatcher = Acts::SurfaceBinningMatcher(binTolerances);
+
+    { // negative endcap
+      // Create the layer config object and fill it
+      Acts::TGeoLayerBuilder::LayerConfig lConfig;
+      lConfig.volumeName = "InnerTrackerEndcap*";
+      lConfig.sensorNames = {"sensor*"};
+      lConfig.localAxes = "XYZ";
+
+      // Fill the parsing restrictions in r
+      lConfig.parseRanges.push_back({Acts::binR, {50, 500}});
+
+      // Fill the parsing restrictions in z
+      lConfig.parseRanges.push_back({Acts::binZ, {-600, -500}});
+
+      // Fill the layer splitting parameters in z
+      lConfig.splitConfigs.push_back({Acts::binZ, 10});
+
+      // Save
+      layerBuilderConfig.layerConfigurations[0].push_back(lConfig);
+    }
+
+    { // barrel
+      // Create the layer config object and fill it
+      Acts::TGeoLayerBuilder::LayerConfig lConfig;
+      lConfig.volumeName = "InnerTrackerBarrel*";
+      lConfig.sensorNames = {"sensor*"};
+      lConfig.localAxes = "XYZ";
+
+      // Fill the parsing restrictions in r
+      lConfig.parseRanges.push_back({Acts::binR, {120, 500}});
+
+      // Fill the layer splitting parameters in r
+      lConfig.splitConfigs.push_back({Acts::binR, 10});
+
+      // Fill the parsing restrictions in z
+      lConfig.parseRanges.push_back({Acts::binZ, {-500,500}});
+
+      // Save
+      layerBuilderConfig.layerConfigurations[1].push_back(lConfig);
+    }
+
+    { // positive endcap
+      // Create the layer config object and fill it
+      Acts::TGeoLayerBuilder::LayerConfig lConfig;
+      lConfig.volumeName = "InnerTrackerEndcap*";
+      lConfig.sensorNames = {"sensor*"};
+      lConfig.localAxes = "XYZ";
+
+      // Fill the parsing restrictions in r
+      lConfig.parseRanges.push_back({Acts::binR, { 50,500}});
+
+      // Fill the parsing restrictions in z
+      lConfig.parseRanges.push_back({Acts::binZ, {500,600}});
+
+      // Fill the layer splitting parameters in z
+      lConfig.splitConfigs.push_back({Acts::binZ, 10});
+
+      // Save
+      layerBuilderConfig.layerConfigurations[2].push_back(lConfig);
+    }
+    
+    // Save
+    layerBuilderConfigs.push_back(layerBuilderConfig);
+  }
+
+  { // OuterInnerTracker
+    Acts::TGeoLayerBuilder::Config layerBuilderConfig;
+    layerBuilderConfig.configurationName = "OuterInnerTrackers";
+    layerBuilderConfig.autoSurfaceBinning = true;
+
+    // AutoBinning
+    std::vector<std::pair<double, double>> binTolerances{(int)Acts::binValues,
+                                                         {0., 0.}};
+    binTolerances[Acts::binR  ] = {5,5};
+    binTolerances[Acts::binZ  ] = {5,5};
+    binTolerances[Acts::binPhi] = {0.025,0.025};
+    layerBuilderConfig.surfaceBinMatcher = Acts::SurfaceBinningMatcher(binTolerances);
+
+    { // negative endcap
+      // Create the layer config object and fill it
+      Acts::TGeoLayerBuilder::LayerConfig lConfig;
+      lConfig.volumeName = "OuterInnerTrackerEndcap*";
+      lConfig.sensorNames = {"sensor*"};
+      lConfig.localAxes = "XYZ";
+
+      // Fill the parsing restrictions in r
+      lConfig.parseRanges.push_back({Acts::binR, {  120, 600}});
+
+      // Fill the parsing restrictions in z
+      lConfig.parseRanges.push_back({Acts::binZ, {-2210,-750}});
+
+      // Fill the layer splitting parameters in z
+      lConfig.splitConfigs.push_back({Acts::binZ, 10});
+
+      // Save
+      layerBuilderConfig.layerConfigurations[0].push_back(lConfig);
+    }
+
+    { // barrel
+      // Create the layer config object and fill it
+      Acts::TGeoLayerBuilder::LayerConfig lConfig;
+      lConfig.volumeName = "OuterInnerTrackerBarrel*";
+      lConfig.sensorNames = {"sensor*"};
+      lConfig.localAxes = "XYZ";
+
+      // Fill the parsing restrictions in r
+      lConfig.parseRanges.push_back({Acts::binR, {500, 600}});
+
+      // Fill the layer splitting parameters in r
+      lConfig.splitConfigs.push_back({Acts::binR, 10});
+
+      // Fill the parsing restrictions in z
+      lConfig.parseRanges.push_back({Acts::binZ, {-750,750}});
+
+      // Save
+      layerBuilderConfig.layerConfigurations[1].push_back(lConfig);
+    }
+
+    { // positive endcap
+      // Create the layer config object and fill it
+      Acts::TGeoLayerBuilder::LayerConfig lConfig;
+      lConfig.volumeName = "OuterInnerTrackerEndcap*";
+      lConfig.sensorNames = {"sensor*"};
+      lConfig.localAxes = "XYZ";
+
+      // Fill the parsing restrictions in r
+      lConfig.parseRanges.push_back({Acts::binR, {120,600}});
+
+      // Fill the parsing restrictions in z
+      lConfig.parseRanges.push_back({Acts::binZ, {750,2210}});
+
+      // Fill the layer splitting parameters in z
+      lConfig.splitConfigs.push_back({Acts::binZ, 10});
+
+      // Save
+      layerBuilderConfig.layerConfigurations[2].push_back(lConfig);
+    }
+    
+    // Save
+    layerBuilderConfigs.push_back(layerBuilderConfig);
+  }
+
+  { // OuterTracker
+    Acts::TGeoLayerBuilder::Config layerBuilderConfig;
+    layerBuilderConfig.configurationName = "OuterTrackers";
+    layerBuilderConfig.autoSurfaceBinning = true;
+
+    // AutoBinning
+    std::vector<std::pair<double, double>> binTolerances{(int)Acts::binValues,
+                                                         {0., 0.}};
+    binTolerances[Acts::binR  ] = {5,5};
+    binTolerances[Acts::binZ  ] = {5,5};
+    binTolerances[Acts::binPhi] = {0.025,0.025};
+    layerBuilderConfig.surfaceBinMatcher = Acts::SurfaceBinningMatcher(binTolerances);
+
+    { // negative endcap
+      // Create the layer config object and fill it
+      Acts::TGeoLayerBuilder::LayerConfig lConfig;
+      lConfig.volumeName = "OuterTrackerEndcap*";
+      lConfig.sensorNames = {"sensor*"};
+      lConfig.localAxes = "XYZ";
+
+      // Fill the parsing restrictions in r
+      lConfig.parseRanges.push_back({Acts::binR, {570,1550}});
+
+      // Fill the parsing restrictions in z
+      lConfig.parseRanges.push_back({Acts::binZ, {-2210,-1300}});
+
+      // Fill the layer splitting parameters in z
+      lConfig.splitConfigs.push_back({Acts::binZ, 10});
+
+      // Save
+      layerBuilderConfig.layerConfigurations[0].push_back(lConfig);
+    }
+
+    { // barrel
+      // Create the layer config object and fill it
+      Acts::TGeoLayerBuilder::LayerConfig lConfig;
+      lConfig.volumeName = "OuterTrackerBarrel*";
+      lConfig.sensorNames = {"sensor*"};
+      lConfig.localAxes = "XYZ";
+
+      // Fill the parsing restrictions in r
+      lConfig.parseRanges.push_back({Acts::binR, {600, 1550}});
+
+      // Fill the layer splitting parameters in r
+      lConfig.splitConfigs.push_back({Acts::binR, 10});
+
+      // Fill the parsing restrictions in z
+      lConfig.parseRanges.push_back({Acts::binZ, {-1300,1300}});
+
+      // Save
+      layerBuilderConfig.layerConfigurations[1].push_back(lConfig);
+    }
+
+    { // positive endcap
+      // Create the layer config object and fill it
+      Acts::TGeoLayerBuilder::LayerConfig lConfig;
+      lConfig.volumeName = "OuterTrackerEndcap*";
+      lConfig.sensorNames = {"sensor*"};
+      lConfig.localAxes = "XYZ";
+
+      // Fill the parsing restrictions in r
+      lConfig.parseRanges.push_back({Acts::binR, {570,1550}});
+
+      // Fill the parsing restrictions in z
+      lConfig.parseRanges.push_back({Acts::binZ, {1300,2210}});
+
+      // Fill the layer splitting parameters in z
+      lConfig.splitConfigs.push_back({Acts::binZ, 10});
+
+      // Save
+      layerBuilderConfig.layerConfigurations[2].push_back(lConfig);
+    }
+    
+    // Save
+    layerBuilderConfigs.push_back(layerBuilderConfig);
+  }
+
+  // remember the layer builders to collect the detector elements
+  std::vector<std::shared_ptr<const Acts::TGeoLayerBuilder>> tgLayerBuilders;
+  
+  for (auto& lbc : layerBuilderConfigs)
+  {
+    std::shared_ptr<const Acts::LayerCreator> layerCreatorLB = nullptr;
+
+    if (lbc.autoSurfaceBinning)
+    {
+      // Configure surface array creator (optionally) per layer builder
+      // (in order to configure them to work appropriately)
+      Acts::SurfaceArrayCreator::Config sacConfigLB;
+      sacConfigLB.surfaceMatcher = lbc.surfaceBinMatcher;
+      auto surfaceArrayCreatorLB =
+          std::make_shared<const Acts::SurfaceArrayCreator>(
+              sacConfigLB, Acts::getDefaultLogger(
+                               lbc.configurationName + "SurfaceArrayCreator",
+                               surfaceLogLevel));
+
+      // configure the layer creator that uses the surface array creator
+      Acts::LayerCreator::Config lcConfigLB;
+      lcConfigLB.surfaceArrayCreator = surfaceArrayCreatorLB;
+      layerCreatorLB = std::make_shared<const Acts::LayerCreator>(
+          lcConfigLB,
+          Acts::getDefaultLogger(lbc.configurationName + "LayerCreator",
+                                 layerLogLevel));
+    }
+
+    // Configure the proto layer helper
+    Acts::ProtoLayerHelper::Config plhConfigLB;
+    auto protoLayerHelperLB = std::make_shared<const Acts::ProtoLayerHelper>(
+        plhConfigLB,
+        Acts::getDefaultLogger(lbc.configurationName + "ProtoLayerHelper",
+                               layerLogLevel));
+
+    //-------------------------------------------------------------------------------------
+    lbc.layerCreator =
+        (layerCreatorLB != nullptr) ? layerCreatorLB : layerCreator;
+    lbc.protoLayerHelper =
+        (protoLayerHelperLB != nullptr) ? protoLayerHelperLB : protoLayerHelper;
+
+    auto layerBuilder = std::make_shared<const Acts::TGeoLayerBuilder>(
+        lbc, Acts::getDefaultLogger(lbc.configurationName + "LayerBuilder",
+                                    layerLogLevel));
+    // remember the layer builder
+    tgLayerBuilders.push_back(layerBuilder);
+
+    // build the pixel volume
+    Acts::CylinderVolumeBuilder::Config volumeConfig;
+    volumeConfig.trackingVolumeHelper = cylinderVolumeHelper;
+    volumeConfig.volumeName = lbc.configurationName;
+    volumeConfig.buildToRadiusZero = (volumeBuilders.size() == 0);
+    volumeConfig.layerEnvelopeR = {1. * Acts::UnitConstants::mm,
+                                   5. * Acts::UnitConstants::mm};
+    auto ringLayoutConfiguration =
+        [&](const std::vector<Acts::TGeoLayerBuilder::LayerConfig>& lConfigs)
+        -> void {
+      for (const auto& lcfg : lConfigs) {
+        for (const auto& scfg : lcfg.splitConfigs) {
+          if (scfg.first == Acts::binR and scfg.second > 0.) {
+            volumeConfig.ringTolerance =
+                std::max(volumeConfig.ringTolerance, scfg.second);
+            volumeConfig.checkRingLayout = true;
+          }
+        }
+      }
+    };
+    ringLayoutConfiguration(lbc.layerConfigurations[0]);
+    ringLayoutConfiguration(lbc.layerConfigurations[2]);
+    volumeConfig.layerBuilder = layerBuilder;
+    volumeConfig.volumeSignature = 0;
+    auto volumeBuilder = std::make_shared<const Acts::CylinderVolumeBuilder>(
+        volumeConfig,
+        Acts::getDefaultLogger(lbc.configurationName + "VolumeBuilder",
+                               volumeLogLevel));
+    // add to the list of builders
+    volumeBuilders.push_back(volumeBuilder);
+  }
+
+  //-------------------------------------------------------------------------------------
+  // create the tracking geometry
+  Acts::TrackingGeometryBuilder::Config tgConfig;
+  // Add the builders
+  tgConfig.materialDecorator = matDeco;
+
+  for (auto& vb : volumeBuilders) {
+    tgConfig.trackingVolumeBuilders.push_back(
+        [=](const auto& gcontext, const auto& inner, const auto&) {
+          return vb->trackingVolume(gcontext, inner);
+        });
+  }
+  // Add the helper
+  tgConfig.trackingVolumeHelper = cylinderVolumeHelper;
+  auto cylinderGeometryBuilder =
+      std::make_shared<const Acts::TrackingGeometryBuilder>(
+          tgConfig,
+          Acts::getDefaultLogger("TrackerGeometryBuilder", volumeLogLevel));
+  // get the geometry
+  _trackingGeometry = cylinderGeometryBuilder->trackingGeometry(_tGeoContext);
+  // collect the detector element store
+  for (auto& lBuilder : tgLayerBuilders) {
+    auto detElements = lBuilder->detectorElements();
+    _detectorStore.insert(_detectorStore.begin(),
+                          detElements.begin(), detElements.end());
+  }
+}

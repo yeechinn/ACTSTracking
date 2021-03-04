@@ -39,7 +39,7 @@ IF( INSTALL_DOC AND EXISTS "${PROJECT_SOURCE_DIR}/doc/CMakeLists.txt" )
 ENDIF()
 
 ### DATA ###########################################################
-#ADD_SUBDIRECTORY(example)
+ADD_SUBDIRECTORY(example)
 
 ### LIBRARY #################################################################
 
@@ -48,4 +48,4 @@ ADD_LIBRARY(ACTSTracking SHARED
   ./src/ACTSDetectorLoaderProc.cxx
   )
 TARGET_INCLUDE_DIRECTORIES(ACTSTracking PRIVATE ./ACTSTracking ${Marlin_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
-TARGET_LINK_LIBRARIES(ACTSTracking ${ROOT_LIBRARIES})
+TARGET_LINK_LIBRARIES(ACTSTracking ${ROOT_LIBRARIES} ActsCore ActsPluginTGeo ActsPluginJson)

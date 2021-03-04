@@ -3,6 +3,10 @@
 
 #include <marlin/Processor.h>
 
+#include <Acts/Geometry/GeometryContext.hpp>
+#include <Acts/Geometry/TrackingGeometry.hpp>
+#include <Acts/Plugins/TGeo/TGeoDetectorElement.hpp>
+
 //! \brief Load tracker geometry for ACTS
 /**
  * @author Karol Krizka
@@ -10,6 +14,9 @@
  */
 class ACTSDetectorLoaderProc : public marlin::Processor
 {
+  using DetectorElementPtr = std::shared_ptr<const Acts::TGeoDetectorElement>;
+  using DetectorStore = std::vector<DetectorElementPtr>;
+
  public:
 
   virtual marlin::Processor* newProcessor() { return new ACTSDetectorLoaderProc ; }
@@ -37,6 +44,17 @@ class ACTSDetectorLoaderProc : public marlin::Processor
    */
   virtual void end() ;
 
+ private:
+  void buildDetector();
+
+ protected:
+  std::string _tgeoFile {};
+  std::string _matFile {};
+
+ private:
+  DetectorStore _detectorStore;
+  Acts::GeometryContext _tGeoContext;
+  std::shared_ptr<const Acts::TrackingGeometry> _trackingGeometry;
 };
 
 #endif
