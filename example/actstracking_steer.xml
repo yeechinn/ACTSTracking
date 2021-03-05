@@ -21,7 +21,6 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
 
     <!-- ==========  Geometry initialization  ========== -->
     <processor name="InitDD4hep"/>
-    <processor name="InitACTS"/>
 
     <!-- ==========  Tracker Digitization  ========== -->
     <processor name="VXDBarrelDigitiser"/>
@@ -108,18 +107,6 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <!--verbosity level of this processor ("DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
     <!--parameter name="Verbosity" type="string">DEBUG </parameter-->
   </processor>
-
-  <processor name="InitACTS" type="ACTSDetectorLoaderProc">
-    <!--Load tracking detector into ACTS-->
-    <!--Path to TGeo dump-->
-    <parameter name="TGeoFile" type="string">
-      ${PROJECT_SOURCE_DIR}/data/MuColl_v1_mod0.root
-    </parameter>
-    <!--Path to material description-->
-    <parameter name="MatFile" type="string">
-      ${PROJECT_SOURCE_DIR}/data/material-maps.json
-    </parameter>
-  </processor>
   
   <!-- ======================================================================================================== -->
   <!-- ======================================================================================================== -->
@@ -140,7 +127,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <parameter name="CorrectTimesForPropagation" type="bool" value="true"/>
     <parameter name="TimeWindowMin" type="float"> -0.15 </parameter>
     <parameter name="TimeWindowMax" type="float"> 0.15 </parameter>
-    <parameter name="Verbosity" type="string"> WARNING </parameter>
+    <parameter name="Verbosity" type="string"> DEBUG4 </parameter>
   </processor>
 
   <processor name="VXDEndcapDigitiser" type="DDPlanarDigiProcessor">
@@ -264,6 +251,10 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
   <!-- == TruthTrackFinder parameters == -->
 
   <processor name="MyTruthTracking" type="ACTSTruthTrackingProc">
+    <!--Path to material description-->
+    <parameter name="MatFile" type="string">
+      ${PROJECT_SOURCE_DIR}/data/material-maps.json
+    </parameter>    
     <!--Define input tracker hits and relations. NB. Order must be respected -->
     <parameter name="TrackerHitCollectionNames" type="StringVec" lcioInType="TrackerHitPlane">
       VXDTrackerHits
@@ -297,6 +288,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
 
   <processor name="MergeHits" type="MergeCollections">
     <parameter name="InputCollections" type="StringVec">VXDTrackerHits VXDEndcapTrackerHits ITrackerHits ITrackerEndcapHits OITrackerHits OITrackerEndcapHits OTrackerHits OTrackerEndcapHits</parameter>
+    <!--<parameter name="InputCollections" type="StringVec">ITrackerHits ITrackerEndcapHits OITrackerHits OITrackerEndcapHits OTrackerHits OTrackerEndcapHits</parameter>-->
     <parameter name="OutputCollection" type="string"> HitsCollection </parameter>
   </processor>
 

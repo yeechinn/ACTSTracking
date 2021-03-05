@@ -1,4 +1,6 @@
-#include "ACTSDetectorLoaderProc.hxx"
+#include "ACTSProcBase.hxx"
+
+#include <Acts/Definitions/Units.hpp>
 
 #include <Acts/Geometry/CylinderVolumeBuilder.hpp>
 #include <Acts/Geometry/CylinderVolumeHelper.hpp>
@@ -15,14 +17,14 @@
 #include <Acts/Plugins/TGeo/TGeoDetectorElement.hpp>
 #include <Acts/Plugins/TGeo/TGeoLayerBuilder.hpp>
 
-ACTSDetectorLoaderProc aACTSDetectorLoaderProc ;
+#include <DD4hep/Detector.h>
+#include <DD4hep/DD4hepUnits.h>
 
-ACTSDetectorLoaderProc::ACTSDetectorLoaderProc()
-  : Processor("ACTSDetectorLoaderProc")
+#include <UTIL/LCTrackerConf.h>
+
+ACTSProcBase::ACTSProcBase(const std::string& procname)
+  : Processor(procname)
 {
-  // modify processor description
-  _description = "Load the tracking detector for ACTS." ;
-
   // configuration
   registerProcessorParameter( "MatFile" ,
                               "Path to the material description json file",
@@ -31,31 +33,65 @@ ACTSDetectorLoaderProc::ACTSDetectorLoaderProc()
 			      );
 }
 
-void ACTSDetectorLoaderProc::init()
+
+std::shared_ptr<ACTSGeometryIdMappingTool> ACTSProcBase::geoIDMappingTool() const
+{ return _geoIDMappingTool; }
+
+const Acts::MagneticFieldContext& ACTSProcBase::magneticFieldContext() const
+{ return _magneticFieldContext; }
+
+const Acts::GeometryContext& ACTSProcBase::geometryContext() const
+{ return _geometryContext; }
+
+const Acts::CalibrationContext& ACTSProcBase::calibrationContext() const
+{ return _calibrationContext; }
+
+const Acts::ConstantBField& ACTSProcBase::magneticField() const
+{ return _magneticField; }
+
+std::shared_ptr<const Acts::TrackingGeometry> ACTSProcBase::trackingGeometry() const
+{ return _trackingGeometry; }
+
+const Acts::Surface* ACTSProcBase::findSurface(const EVENT::TrackerHit* hit) const
 {
-  streamlog_out(MESSAGE) << " -------------------------------------" << std::endl
-                         << " ---- Initializing tracker from TGeo file  " << _tgeoFile << " ... " << std::endl ;
-
-  buildDetector();
-  
-  streamlog_out( MESSAGE ) // << " ---- instantiated  trgeometry for detector " << theDetector.header().name()  << std::endl
-                            << " -------------------------------------" << std::endl ;
-
+  uint64_t moduleGeoId=_geoIDMappingTool->getGeometryID(hit);
+  return _trackingGeometry->findSurface(moduleGeoId);
 }
 
-void ACTSDetectorLoaderProc::processRunHeader( LCRunHeader* run )
+void ACTSProcBase::init()
+{  
+  // Print the initial parameters
+  printParameters() ;
+
+  // Load geometry
+  streamlog_out(MESSAGE) << " -------------------------------------" << std::endl
+                         << " ---- Initializing tracker material from " << _matFile << " ... " << std::endl ;
+
+  streamlog_out(MESSAGE) << " -- Building magnetic field" << std::endl;
+  buildBfield();
+  streamlog_out(MESSAGE) << " -- Building tracking detector" << std::endl;
+  buildDetector();
+  
+  streamlog_out( MESSAGE ) // << " ---- instantiated  geometry for detector " << theDetector.header().name()  << std::endl
+                            << " -------------------------------------" << std::endl ;
+
+  // Initialize mapping tool
+  _geoIDMappingTool=std::make_shared<ACTSGeometryIdMappingTool>(lcio::LCTrackerCellID::encoding_string());
+}
+
+void ACTSProcBase::processRunHeader( LCRunHeader* run )
 { }
 
-void ACTSDetectorLoaderProc::processEvent( LCEvent * evt )
+void ACTSProcBase::processEvent( LCEvent * evt )
 { }
   
-void ACTSDetectorLoaderProc::check( LCEvent * evt )
+void ACTSProcBase::check( LCEvent * evt )
 { }
 
-void ACTSDetectorLoaderProc::end()
+void ACTSProcBase::end()
 { }
 
-void ACTSDetectorLoaderProc::buildDetector()
+void ACTSProcBase::buildDetector()
 {
   // Logging
   Acts::Logging::Level surfaceLogLevel = Acts::Logging::INFO;
@@ -155,6 +191,7 @@ void ACTSDetectorLoaderProc::buildDetector()
   { // Vertex
     Acts::TGeoLayerBuilder::Config layerBuilderConfig;
     layerBuilderConfig.configurationName = "Vertex";
+    layerBuilderConfig.unit = 1 * Acts::UnitConstants::cm;
     layerBuilderConfig.autoSurfaceBinning = true;
 
     // AutoBinning
@@ -189,7 +226,7 @@ void ACTSDetectorLoaderProc::buildDetector()
       // Create the layer config object and fill it
       Acts::TGeoLayerBuilder::LayerConfig lConfig;
       lConfig.volumeName = "VertexBarrel*";
-      lConfig.sensorNames = {"sensor*"};
+      lConfig.sensorNames = {"VertexBarrel_layer*_sens"};
       lConfig.localAxes = "YZX";
 
       // Fill the parsing restrictions in r
@@ -558,11 +595,27 @@ void ACTSDetectorLoaderProc::buildDetector()
           tgConfig,
           Acts::getDefaultLogger("TrackerGeometryBuilder", volumeLogLevel));
   // get the geometry
-  _trackingGeometry = cylinderGeometryBuilder->trackingGeometry(_tGeoContext);
+  _trackingGeometry = cylinderGeometryBuilder->trackingGeometry(_geometryContext);
   // collect the detector element store
   for (auto& lBuilder : tgLayerBuilders) {
     auto detElements = lBuilder->detectorElements();
     _detectorStore.insert(_detectorStore.begin(),
                           detElements.begin(), detElements.end());
   }
+}
+
+void ACTSProcBase::buildBfield()
+{
+  // Get the magnetic field
+  dd4hep::Detector& lcdd = dd4hep::Detector::getInstance();
+  const double position[3]={0,0,0}; // position to calculate magnetic field at (the origin in this case)
+  double magneticFieldVector[3]={0,0,0}; // initialise object to hold magnetic field
+  lcdd.field().magneticField(position,magneticFieldVector); // get the magnetic field vector from DD4hep
+
+  // Build ACTS representation of field
+  _magneticField = Acts::ConstantBField(
+      magneticFieldVector[0]/dd4hep::tesla * Acts::UnitConstants::T,
+      magneticFieldVector[1]/dd4hep::tesla * Acts::UnitConstants::T,
+      magneticFieldVector[2]/dd4hep::tesla * Acts::UnitConstants::T
+                                        );
 }

@@ -37,8 +37,9 @@ ADD_SUBDIRECTORY(example)
 
 # sources
 ADD_LIBRARY(ACTSTracking SHARED
-  ./src/ACTSDetectorLoaderProc.cxx
+  ./src/ACTSProcBase.cxx
   ./src/ACTSTruthTrackingProc.cxx
+  ./src/ACTSGeometryIdMappingTool.cxx
   )
 TARGET_INCLUDE_DIRECTORIES(ACTSTracking PRIVATE ./ACTSTracking ${Marlin_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
 TARGET_LINK_LIBRARIES(ACTSTracking

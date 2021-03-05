@@ -1,66 +1,36 @@
 #include "ACTSTruthTrackingProc.hxx"
 
-/*
-#include "HitsSorterAndDebugger.h"
-
-#include <marlinutil/HelixClass.h>
-
-#include "MarlinTrk/MarlinTrkUtils.h"
-#include "MarlinTrk/HelixTrack.h"
-#include "MarlinTrk/HelixFit.h"
-#include "MarlinTrk/IMarlinTrack.h"
-#include "MarlinTrk/Factory.h"
-#include "MarlinTrk/MarlinTrkDiagnostics.h"
-#include "MarlinTrk/IMarlinTrkSystem.h"
-
-#include <EVENT/LCCollection.h>
-*/
 #include <IMPL/LCCollectionVec.h>
 #include <IMPL/LCFlagImpl.h>
 #include <IMPL/TrackerHitPlaneImpl.h>
-/*
-#include <IMPL/LCRelationImpl.h>
-*/
+
 #include <EVENT/MCParticle.h>
 #include <EVENT/SimTrackerHit.h>
-/*
-#include <IMPL/TrackImpl.h>
 
-#include <UTIL/CellIDEncoder.h>
-#include "UTIL/LCTrackerConf.h"
-#include <UTIL/BitSet32.h>
-*/
 #include <UTIL/LCRelationNavigator.h>
+#include <UTIL/LCTrackerConf.h>
 
-#include <DD4hep/Detector.h>
-#include <DD4hep/DD4hepUnits.h>
-/*
-#include "DDRec/SurfaceManager.h"
+#include <Acts/Definitions/Units.hpp>
 
-#include <gsl/gsl_rng.h>
-#include <gsl/gsl_randist.h>
+#include <Acts/Propagator/EigenStepper.hpp>
 
-#include "marlin/ProcessorEventSeeder.h"
-#include "marlin/Global.h"
+#include <Acts/Surfaces/PerigeeSurface.hpp>
 
-#include "CLHEP/Vector/TwoVector.h"
+#include <Acts/TrackFitting/GainMatrixSmoother.hpp>
+#include <Acts/TrackFitting/GainMatrixUpdater.hpp>
+#include <Acts/TrackFitting/KalmanFitter.hpp>
 
-#include <AIDA/IAnalysisFactory.h>
-#include <AIDA/IHistogramFactory.h>
+using namespace Acts::UnitLiterals;
 
-#include <cmath>
-#include <algorithm>
-#include <sstream>
-#include <iostream>
-#include <climits>
-#include <cfloat>
+#include "MeasurementCalibrator.hxx"
+#include "SourceLink.hxx"
 
-using namespace lcio ;
-using namespace marlin ;
-using namespace std ;
-using namespace dd4hep ;
-using namespace AIDA ;
-*/
+namespace ACTSTracking
+{
+
+//! Prototrack is a collection of measurements
+using ProtoTrack = std::vector<MeasurementContainer>;
+}
 
 // sorting by value of R(=x^2+y^2) in global coordinated so the hits are always
 // sorted from close to the IP outward
@@ -73,10 +43,9 @@ bool sort_by_radius(EVENT::TrackerHit* hit1, EVENT::TrackerHit* hit2)
   return radius1 < radius2;
 }
 
-
 ACTSTruthTrackingProc aACTSTruthTrackingProc;
 
-ACTSTruthTrackingProc::ACTSTruthTrackingProc() : marlin::Processor("ACTSTruthTrackingProc")
+ACTSTruthTrackingProc::ACTSTruthTrackingProc() : ACTSProcBase("ACTSTruthTrackingProc")
 {
 	// modify processor description
 	_description = "Build and fit tracks out of all hits associated to an MC particle" ;
@@ -96,10 +65,10 @@ ACTSTruthTrackingProc::ACTSTruthTrackingProc() : marlin::Processor("ACTSTruthTra
                             {} );
 
   registerInputCollection( LCIO::MCPARTICLE,
-                          "MCParticleCollectionName",
-                          "Name of the MCParticle input collection",
-                          _inputParticleCollection,
-                          std::string("MCParticle"));
+                           "MCParticleCollectionName",
+                           "Name of the MCParticle input collection",
+                           _inputParticleCollection,
+                           std::string("MCParticle"));
 
   // Output collections - tracks and relations
   registerOutputCollection( LCIO::TRACK,
@@ -109,21 +78,21 @@ ACTSTruthTrackingProc::ACTSTruthTrackingProc() : marlin::Processor("ACTSTruthTra
                             std::string("TruthTracks"));
 
   registerOutputCollection( LCIO::LCRELATION,
-                           "TrackRelationCollectionName",
-                           "Name of track to particle relation output collection",
+                            "TrackRelationCollectionName",
+                            "Name of track to particle relation output collection",
                             _outputTrackRelationCollection,
                             std::string("TruthTrackRelations"));
 }
 
 void ACTSTruthTrackingProc::init()
 {
-	// Print the initial parameters
-	printParameters() ;
+  ACTSProcBase::init();
 	
 	// Reset counters
 	m_runNumber = 0 ;
 	m_eventNumber = 0 ;
 	m_fitFails = 0;
+
 
   /*
   // Set up the track fit factory
@@ -133,7 +102,7 @@ void ACTSTruthTrackingProc::init()
   trackFactory->setOption( MarlinTrk::IMarlinTrkSystem::CFG::useSmoothing,  false) ;
   trackFactory->init() ;
 
-  // Put default values for track fitting
+  // Put default values for track fittingz
   m_initialTrackError_d0 = 1.e6;
   m_initialTrackError_phi0 = 1.e2;
   m_initialTrackError_omega = 1.e-4;
@@ -141,36 +110,36 @@ void ACTSTruthTrackingProc::init()
   m_initialTrackError_tanL = 1.e2;
   m_maxChi2perHit = 1.e2;
   */
-  
-  // Get the magnetic field
-  dd4hep::Detector& lcdd = dd4hep::Detector::getInstance();
-  const double position[3]={0,0,0}; // position to calculate magnetic field at (the origin in this case)
-  double magneticFieldVector[3]={0,0,0}; // initialise object to hold magnetic field
-  lcdd.field().magneticField(position,magneticFieldVector); // get the magnetic field vector from DD4hep
-  m_magneticField = magneticFieldVector[2]/dd4hep::tesla; // z component at (0,0,0)
 
-  /*
   //Initialize CellID encoder
-  m_encoder = new UTIL::BitField64(lcio::LCTrackerCellID::encoding_string());
-  */
+  m_encoder = std::make_shared<UTIL::BitField64>(lcio::LCTrackerCellID::encoding_string());
 }
 
 
 void ACTSTruthTrackingProc::processRunHeader( LCRunHeader* )
 {
-	/* m_runNumber++ ;*/
+  m_runNumber++ ;
 }
 
 void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
 {
-  std::cout << "magnetic field " << m_magneticField << std::endl;
-  /*
-  // set the correct configuration for the tracking system for this event 
-  MarlinTrk::TrkSysConfig< MarlinTrk::IMarlinTrkSystem::CFG::useQMS>       mson(     trackFactory, true  ) ;
-  MarlinTrk::TrkSysConfig< MarlinTrk::IMarlinTrkSystem::CFG::usedEdx>      elosson(  trackFactory, true  ) ;
-  MarlinTrk::TrkSysConfig< MarlinTrk::IMarlinTrkSystem::CFG::useSmoothing> smoothon( trackFactory, false ) ;
-  */
-  
+  using Updater = Acts::GainMatrixUpdater;
+  using Smoother = Acts::GainMatrixSmoother;
+  using MagneticField = Acts::ConstantBField;
+  using Stepper = Acts::EigenStepper<MagneticField>;
+  using Navigator = Acts::Navigator;
+  using Propagator = Acts::Propagator<Stepper, Navigator>;
+  using Fitter = Acts::KalmanFitter<Propagator, Updater, Smoother>;
+
+  // construct all components for the fitter
+  Stepper stepper(magneticField());
+  Navigator navigator(trackingGeometry());
+  navigator.resolvePassive = false;
+  navigator.resolveMaterial = true;
+  navigator.resolveSensitive = true;
+  Propagator propagator(std::move(stepper), std::move(navigator));
+  Fitter trackFitter(std::move(propagator));
+
   // Get the collection of MC particles
   LCCollection* particleCollection = getCollection(_inputParticleCollection, evt);
   if(particleCollection == nullptr) return;
@@ -223,9 +192,10 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
   	// Loop over tracker hits
 	  int nHits = trackerHitCollections[collection]->getNumberOfElements();
 	  for(int itHit=0;itHit<nHits;itHit++)
-    {    
+    {
 	    // Get the hit
 	    TrackerHitPlane* hit = dynamic_cast<TrackerHitPlane*>( trackerHitCollections[collection]->getElementAt(itHit) ) ;
+      const double* globalpos = hit->getPosition();
 
 	    // Get the related simulated hit(s)
 	    const LCObjectVec& simHitVector = relations[collection]->getRelatedToObjects( hit );
@@ -248,7 +218,7 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
   // Now loop over all particles and get the list of hits
   int nParticles = particleCollection->getNumberOfElements();
   for(int itP=0;itP<nParticles;itP++)
-  {	
+  {
     // Get the particle
     MCParticle* mcParticle = static_cast<MCParticle*>( particleCollection->getElementAt(itP) ) ;
 
@@ -267,6 +237,122 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
     removeHitsSameLayer(trackHits, trackFilteredByRHits);
     if(trackFilteredByRHits.size() < 3) continue;
 
+    // Make container
+    //MeasurementContainer track;
+    std::vector<ACTSTracking::SourceLink> trackSourceLinks;
+    std::vector<const Acts::Surface*> surfSequence;
+    ACTSTracking::MeasurementContainer track;
+    for(const EVENT::TrackerHit* hit : trackFilteredByRHits)
+    {
+      // Convert to Acts hit
+      const Acts::Surface* surface=findSurface(hit);
+
+      const double* globalpos=hit->getPosition();
+      Acts::Result<Acts::Vector2> lpResult = surface->globalToLocal(geometryContext(),
+                                                                    {globalpos[0], globalpos[1], globalpos[2]},
+                                                                    {0,0,0},
+                                                                    0.5_um);
+      if(!lpResult.ok())
+        throw std::runtime_error("Global to local transformation did not succeed.");
+
+      Acts::Vector2 loc = lpResult.value();
+
+      Acts::SymMatrix2 cov = Acts::SymMatrix2::Zero();
+      cov(0, 0) = hit->getCovMatrix()[0]; // xx
+      cov(0, 1) = hit->getCovMatrix()[1]; // yx
+      cov(1, 1) = hit->getCovMatrix()[2]; // yy
+      cov(1, 0) = hit->getCovMatrix()[1]; // yx
+
+      ACTSTracking::SourceLink sourceLink(surface->geometryId(), track.size());
+      ACTSTracking::Measurement meas =
+          Acts::makeMeasurement(sourceLink, loc, cov, Acts::eBoundLoc0,
+                                Acts::eBoundLoc1);
+
+      track.push_back(meas);
+      trackSourceLinks.push_back(sourceLink);
+      surfSequence.push_back(surface);
+    }
+
+    //
+    // Setup tracker
+    // Construct a perigee surface as the target surface
+    std::shared_ptr<Acts::PerigeeSurface> perigeeSurface = Acts::Surface::makeShared<Acts::PerigeeSurface>(
+        Acts::Vector3{0., 0., 0.});
+
+    std::cout << "Found " << track.size() << " measurements" << std::endl;
+    
+    // Set the KalmanFitter options
+    //std::unique_ptr<const Acts::Logger> logger=Acts::getDefaultLogger("TrackFitting", Acts::Logging::Level::VERBOSE);
+    Acts::KalmanFitterOptions<ACTSTracking::MeasurementCalibrator, Acts::VoidOutlierFinder> kfOptions
+        =Acts::KalmanFitterOptions<ACTSTracking::MeasurementCalibrator, Acts::VoidOutlierFinder>(
+            geometryContext(), magneticFieldContext(), calibrationContext(),
+            ACTSTracking::MeasurementCalibrator(track), Acts::VoidOutlierFinder(),
+            //Acts::LoggerWrapper{*logger}, Acts::PropagatorPlainOptions(),
+            Acts::Logger::getDummLogger(), Acts::PropagatorPlainOptions(),
+            &(*perigeeSurface));
+
+    double px=mcParticle->getMomentum()[0];
+    double py=mcParticle->getMomentum()[1];
+    double pz=mcParticle->getMomentum()[2];
+    double pt=sqrt(px*px+py*py);
+    double p =sqrt(px*px+py*py+pz*pz);
+
+    Acts::BoundVector params = Acts::BoundVector::Zero();
+    // position/time
+    params[Acts::eBoundLoc0 ] = 0;
+    params[Acts::eBoundLoc1 ] = 0;
+    params[Acts::eBoundTime ] = mcParticle->getTime();
+    // direction angles phi,theta
+    params[Acts::eBoundPhi  ] = atan2(py,px);
+    params[Acts::eBoundTheta] = atan2(pt,pz);
+    // absolute momentum vector
+    params[Acts::eBoundQOverP] = mcParticle->getCharge()/p;
+
+    // build the track covariance matrix using the smearing sigmas
+    Acts::BoundSymMatrix cov = Acts::BoundSymMatrix::Zero();
+    cov(Acts::eBoundLoc0  , Acts::eBoundLoc0  ) = 20_um * 20_um;
+    cov(Acts::eBoundLoc1  , Acts::eBoundLoc1  ) = 20_um * 20_um;
+    cov(Acts::eBoundTime  , Acts::eBoundTime  ) = 1_ns * 1_ns;
+    cov(Acts::eBoundPhi   , Acts::eBoundPhi   ) = 1_degree * 1_degree;
+    cov(Acts::eBoundTheta , Acts::eBoundTheta ) = 1_degree * 1_degree;
+    cov(Acts::eBoundQOverP, Acts::eBoundQOverP) = 0.01*p/(p*p);
+    std::cout << cov(Acts::eBoundQOverP, Acts::eBoundQOverP) << std::endl;
+    std::cout << 0.01 << " * " << p << " / ( " << p << " * " << p << " ) = " << 0.01*p/(p*p) << std::endl;
+    
+    std::shared_ptr<Acts::PerigeeSurface> particleSurface = Acts::Surface::makeShared<Acts::PerigeeSurface>(
+        Acts::Vector3(mcParticle->getVertex()));
+    
+    Acts::BoundTrackParameters initialparams(perigeeSurface, params, mcParticle->getCharge(), cov);
+    
+    {
+      std::cout << initialparams << std::endl;
+    }
+
+    using TrackFitterResult =
+        Acts::Result<Acts::KalmanFitterResult<ACTSTracking::SourceLink>>;
+    std::cout << "trackSourceLinks.size() = " << trackSourceLinks.size() << std::endl;
+    TrackFitterResult result=trackFitter.fit(trackSourceLinks, initialparams, kfOptions);
+
+    if (result.ok())
+    {
+      std::cout << "ALL GOOD!" << std::endl;
+      const auto& fitOutput = result.value();
+      if (fitOutput.fittedParameters)
+      {
+        const auto& params = fitOutput.fittedParameters.value();
+        std::cout << "Fitted paramemeters for track" << std::endl;
+        std::cout << "  " << params.parameters().transpose() << std::endl;
+      }
+      else
+      {
+        std::cout << "No fitted paramemeters for track" << std::endl;
+      }
+    }
+    else
+    {
+      std::cout << "BAD FIT: " << result.error() << std::endl;
+    }
+  }
     /*
      Fit - this gets complicated. 
      Need to pass a series of objects, including some initial states,
@@ -426,7 +512,6 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
 		delete marlinTrack;
 		delete marlinTrackZSort;
   */
-  }
   
   // Save the output track collection
   //evt->addCollection( trackCollection , m_outputTrackCollection ) ;
@@ -434,7 +519,7 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
   //evt->addCollection( trackRelationCollection , m_outputTrackRelationCollection ) ;
 
 	// Increment the event number
-	m_eventNumber++ ;
+  m_eventNumber++ ;
 }
 
 void ACTSTruthTrackingProc::check( LCEvent* )
@@ -448,10 +533,6 @@ void ACTSTruthTrackingProc::end()
 	streamlog_out(MESSAGE) << " end()  " << name()
                          << " processed " << m_eventNumber << " events in " << m_runNumber << " runs "
                          << std::endl ;
-
-  /*
-	delete m_encoder;
-  */
 }
 
 LCCollection* ACTSTruthTrackingProc::getCollection(const std::string& collectionName, LCEvent* evt)
@@ -466,23 +547,28 @@ LCCollection* ACTSTruthTrackingProc::getCollection(const std::string& collection
     return nullptr;
   }
 }
-  
+
+int ACTSTruthTrackingProc::getSubdetector(const lcio::TrackerHit* hit)
+{ m_encoder->setValue(hit->getCellID0()); return (*m_encoder)[lcio::LCTrackerCellID::subdet()]; }
+
+int ACTSTruthTrackingProc::getLayer(const lcio::TrackerHit* hit)
+{ m_encoder->setValue(hit->getCellID0()); return (*m_encoder)[lcio::LCTrackerCellID::layer()]; }
+
 void ACTSTruthTrackingProc::removeHitsSameLayer(const std::vector<TrackerHit*> &trackHits, std::vector<TrackerHit*> &trackFilteredHits)
 {
-  /*
   trackFilteredHits.push_back(*(trackHits.begin()));
 
-  for(std::vector<TrackerHit*>::const_iterator it = trackHits.begin()+1; it != trackHits.end(); ++it){
+  for(std::vector<TrackerHit*>::const_iterator it = trackHits.begin()+1; it != trackHits.end(); ++it)
+  {
     int subdet = getSubdetector(*it);
     int layer = getLayer(*it);
-    if( subdet != getSubdetector(*(it-1)) ){
+    if( subdet != getSubdetector(*(it-1)) )
+    {
       trackFilteredHits.push_back(*it);
     }
-    else if( layer != getLayer(*(it-1)) ){
+    else if( layer != getLayer(*(it-1)) )
+    {
       trackFilteredHits.push_back(*it);
     }
   }
-  */
 }
-  
-  

@@ -1,32 +1,17 @@
 #ifndef ACTSTruthTrackingProc_h
 #define ACTSTruthTrackingProc_h 1
 
-#include <marlin/Processor.h>
-
-/*
-#include "lcio.h"
-
-#include <string>
-#include <vector>
-#include <map>
-
-#include <gsl/gsl_rng.h>
-#include "DDRec/Surface.h"
-#include <EVENT/LCCollection.h>
-#include "MarlinTrk/IMarlinTrkSystem.h"
-*/
 #include <EVENT/TrackerHit.h>
-/*
+
 #include <UTIL/CellIDDecoder.h>
-#include "UTIL/LCTrackerConf.h"
-#include <AIDA/AIDA.h>
-*/
+
+#include "ACTSProcBase.hxx"
 
 /**
  * This code performs a true pattern recognition by looping over all MC particles and adding all hits
  * associated to them onto a prototrack. This is then fitted and output.
  */
-class ACTSTruthTrackingProc : public marlin::Processor
+class ACTSTruthTrackingProc : public ACTSProcBase
 {		
  public:
 
@@ -63,17 +48,16 @@ class ACTSTruthTrackingProc : public marlin::Processor
  protected:
 	
   // Encoder
-  /*UTIL::BitField64* m_encoder;*/
+  std::shared_ptr<UTIL::BitField64> m_encoder;
 
   // Get the subdetector ID from a hit
-  int getSubdetector(const lcio::TrackerHit* hit){ /*m_encoder->setValue(hit->getCellID0()); return (*m_encoder)[lcio::LCTrackerCellID::subdet()];*/ } 
+  int getSubdetector(const lcio::TrackerHit* hit);
 
   // Get the layer ID from a hit
-  int getLayer(const lcio::TrackerHit* hit){ /*m_encoder->setValue(hit->getCellID0()); return (*m_encoder)[lcio::LCTrackerCellID::layer()];*/ }
+  int getLayer(const lcio::TrackerHit* hit);
 
   // Remove hits in the same layer of the same subdetector
   void removeHitsSameLayer(const std::vector<lcio::TrackerHit*> &, std::vector<lcio::TrackerHit*> &);
-
 
   // Collection names for (in/out)put
   std::vector<std::string> _inputTrackerHitCollections ;
@@ -85,6 +69,7 @@ class ACTSTruthTrackingProc : public marlin::Processor
   // Run and event counters
   int m_eventNumber ;
   int m_runNumber ;
+
   /*
   // Track fit factory
   MarlinTrk::IMarlinTrkSystem* trackFactory;
@@ -97,9 +82,8 @@ class ACTSTruthTrackingProc : public marlin::Processor
   double m_initialTrackError_tanL;
   double m_maxChi2perHit;
   */
-  double m_magneticField;
   int m_fitFails;		
-} ;
+};
 
 #endif
 
