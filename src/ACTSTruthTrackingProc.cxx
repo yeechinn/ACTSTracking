@@ -288,7 +288,7 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
             geometryContext(), magneticFieldContext(), calibrationContext(),
             ACTSTracking::MeasurementCalibrator(track), Acts::VoidOutlierFinder(),
             //Acts::LoggerWrapper{*logger}, Acts::PropagatorPlainOptions(),
-            Acts::Logging::getDummLogger(), Acts::PropagatorPlainOptions(),
+            Acts::getDummyLogger(), Acts::PropagatorPlainOptions(),
             &(*perigeeSurface));
 
     double px=mcParticle->getMomentum()[0];
