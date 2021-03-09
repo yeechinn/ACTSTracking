@@ -22,6 +22,8 @@
 
 #include <UTIL/LCTrackerConf.h>
 
+using namespace ACTSTracking;
+
 ACTSProcBase::ACTSProcBase(const std::string& procname)
   : Processor(procname)
 {
@@ -34,7 +36,7 @@ ACTSProcBase::ACTSProcBase(const std::string& procname)
 }
 
 
-std::shared_ptr<ACTSGeometryIdMappingTool> ACTSProcBase::geoIDMappingTool() const
+std::shared_ptr<GeometryIdMappingTool> ACTSProcBase::geoIDMappingTool() const
 { return _geoIDMappingTool; }
 
 const Acts::MagneticFieldContext& ACTSProcBase::magneticFieldContext() const
@@ -75,7 +77,7 @@ void ACTSProcBase::init()
                             << " -------------------------------------" << std::endl ;
 
   // Initialize mapping tool
-  _geoIDMappingTool=std::make_shared<ACTSGeometryIdMappingTool>(lcio::LCTrackerCellID::encoding_string());
+  _geoIDMappingTool=std::make_shared<GeometryIdMappingTool>(lcio::LCTrackerCellID::encoding_string());
 }
 
 void ACTSProcBase::processRunHeader( LCRunHeader* run )

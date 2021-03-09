@@ -1,21 +1,23 @@
-#include "ACTSGeometryIdMappingTool.hxx"
+#include "GeometryIdMappingTool.hxx"
 
 #include <iomanip>
 
-const int32_t ACTSGeometryIdMappingTool::VertexEndCapNegative = -2;
-const int32_t ACTSGeometryIdMappingTool::VertexBarrel = 1;
-const int32_t ACTSGeometryIdMappingTool::VertexEndCapPositive = 2;
-const int32_t ACTSGeometryIdMappingTool::InnerTrackerEndCapNegative = -4;
-const int32_t ACTSGeometryIdMappingTool::InnerTrackerBarrel = 3;
-const int32_t ACTSGeometryIdMappingTool::InnerTrackerEndCapPositive = 4;
-const int32_t ACTSGeometryIdMappingTool::OuterInnerTrackerEndCapNegative = -8;
-const int32_t ACTSGeometryIdMappingTool::OuterInnerTrackerBarrel = 7;
-const int32_t ACTSGeometryIdMappingTool::OuterInnerTrackerEndCapPositive = 8;
-const int32_t ACTSGeometryIdMappingTool::OuterTrackerEndCapNegative = -6;
-const int32_t ACTSGeometryIdMappingTool::OuterTrackerBarrel = 5;
-const int32_t ACTSGeometryIdMappingTool::OuterTrackerEndCapPositive = 6;
+using namespace ACTSTracking;
 
-const std::unordered_map<uint32_t, uint32_t> ACTSGeometryIdMappingTool::NLad_VertexBarrel = {
+const int32_t GeometryIdMappingTool::VertexEndCapNegative = -2;
+const int32_t GeometryIdMappingTool::VertexBarrel = 1;
+const int32_t GeometryIdMappingTool::VertexEndCapPositive = 2;
+const int32_t GeometryIdMappingTool::InnerTrackerEndCapNegative = -4;
+const int32_t GeometryIdMappingTool::InnerTrackerBarrel = 3;
+const int32_t GeometryIdMappingTool::InnerTrackerEndCapPositive = 4;
+const int32_t GeometryIdMappingTool::OuterInnerTrackerEndCapNegative = -8;
+const int32_t GeometryIdMappingTool::OuterInnerTrackerBarrel = 7;
+const int32_t GeometryIdMappingTool::OuterInnerTrackerEndCapPositive = 8;
+const int32_t GeometryIdMappingTool::OuterTrackerEndCapNegative = -6;
+const int32_t GeometryIdMappingTool::OuterTrackerBarrel = 5;
+const int32_t GeometryIdMappingTool::OuterTrackerEndCapPositive = 6;
+
+const std::unordered_map<uint32_t, uint32_t> GeometryIdMappingTool::NLad_VertexBarrel = {
   {0,  5},
   {1,  5},
   {2,  5},
@@ -26,7 +28,7 @@ const std::unordered_map<uint32_t, uint32_t> ACTSGeometryIdMappingTool::NLad_Ver
   {7,  5}
 };
 
-const std::unordered_map<uint32_t, uint32_t> ACTSGeometryIdMappingTool::NRng_VertexEndCap = {
+const std::unordered_map<uint32_t, uint32_t> GeometryIdMappingTool::NRng_VertexEndCap = {
   {0,  16},
   {1,  16},
   {2,  16},
@@ -37,20 +39,20 @@ const std::unordered_map<uint32_t, uint32_t> ACTSGeometryIdMappingTool::NRng_Ver
   {7,  16}
 };
 
-const std::unordered_map<uint32_t, uint32_t> ACTSGeometryIdMappingTool::NLad_InnerTrackerBarrel = {
+const std::unordered_map<uint32_t, uint32_t> GeometryIdMappingTool::NLad_InnerTrackerBarrel = {
   {0,  32},
   {1,  32},
 };
 
-const std::unordered_map<uint32_t, uint32_t> ACTSGeometryIdMappingTool::NRng_InnerTrackerEndCap = {
+const std::unordered_map<uint32_t, uint32_t> GeometryIdMappingTool::NRng_InnerTrackerEndCap = {
   {0,  26},
 };
 
-const std::unordered_map<uint32_t, uint32_t> ACTSGeometryIdMappingTool::NLad_OuterInnerTrackerBarrel = {
+const std::unordered_map<uint32_t, uint32_t> GeometryIdMappingTool::NLad_OuterInnerTrackerBarrel = {
   {2,  46}
 };
 
-const std::unordered_map<uint32_t, uint32_t> ACTSGeometryIdMappingTool::NRng_OuterInnerTrackerEndCap = {
+const std::unordered_map<uint32_t, uint32_t> GeometryIdMappingTool::NRng_OuterInnerTrackerEndCap = {
   {1,  26},
   {2,  26},
   {3,  26},
@@ -59,13 +61,13 @@ const std::unordered_map<uint32_t, uint32_t> ACTSGeometryIdMappingTool::NRng_Out
   {6,  26}
 };
 
-const std::unordered_map<uint32_t, uint32_t> ACTSGeometryIdMappingTool::NLad_OuterTrackerBarrel = {
+const std::unordered_map<uint32_t, uint32_t> GeometryIdMappingTool::NLad_OuterTrackerBarrel = {
   {0,  84},
   {1,  84},
   {2,  84}
 };
 
-const std::unordered_map<uint32_t, uint32_t> ACTSGeometryIdMappingTool::NRng_OuterTrackerEndCap = {
+const std::unordered_map<uint32_t, uint32_t> GeometryIdMappingTool::NRng_OuterTrackerEndCap = {
   {0,  48},
   {1,  48},
   {2,  48},
@@ -76,7 +78,7 @@ const std::unordered_map<uint32_t, uint32_t> ACTSGeometryIdMappingTool::NRng_Out
   {7,  48}
 };
 
-const std::unordered_map<int32_t, uint32_t> ACTSGeometryIdMappingTool::VolumeMap =
+const std::unordered_map<int32_t, uint32_t> GeometryIdMappingTool::VolumeMap =
 {
   {VertexEndCapNegative           , 13},
   {VertexBarrel                   , 14},
@@ -92,11 +94,11 @@ const std::unordered_map<int32_t, uint32_t> ACTSGeometryIdMappingTool::VolumeMap
   {OuterTrackerEndCapPositive     , 25},
 };
 
-ACTSGeometryIdMappingTool::ACTSGeometryIdMappingTool(const std::string& encoderString)
+GeometryIdMappingTool::GeometryIdMappingTool(const std::string& encoderString)
     : _encoderString(encoderString)
 { }
 
-uint64_t ACTSGeometryIdMappingTool::getGeometryID(const lcio::SimTrackerHit* hit)
+uint64_t GeometryIdMappingTool::getGeometryID(const lcio::SimTrackerHit* hit)
 {
   UTIL::CellIDDecoder<lcio::SimTrackerHit> decoder(_encoderString);
   uint32_t systemID = decoder(hit)["system"];
@@ -108,7 +110,7 @@ uint64_t ACTSGeometryIdMappingTool::getGeometryID(const lcio::SimTrackerHit* hit
   return getGeometryID(systemID, layerID, sideID, ladderID, moduleID);
 }
 
-uint64_t ACTSGeometryIdMappingTool::getGeometryID(const lcio::TrackerHit* hit)
+uint64_t GeometryIdMappingTool::getGeometryID(const lcio::TrackerHit* hit)
 {
   UTIL::CellIDDecoder<lcio::TrackerHit> decoder(_encoderString);
   uint32_t systemID = decoder(hit)["system"];
@@ -120,7 +122,7 @@ uint64_t ACTSGeometryIdMappingTool::getGeometryID(const lcio::TrackerHit* hit)
   return getGeometryID(systemID, layerID, sideID, ladderID, moduleID);
 }
 
-uint64_t ACTSGeometryIdMappingTool::getGeometryID(uint32_t systemID, uint32_t layerID, int32_t sideID, uint32_t ladderID, uint32_t moduleID)
+uint64_t GeometryIdMappingTool::getGeometryID(uint32_t systemID, uint32_t layerID, int32_t sideID, uint32_t ladderID, uint32_t moduleID)
 {
   uint64_t geometry_id = 0;
 

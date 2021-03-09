@@ -1,5 +1,4 @@
-#ifndef ACTSGeometryIdMappingTool_h
-#define ACTSGeometryIdMappingTool_h 1
+#pragma once
 
 #include <unordered_map>
 
@@ -7,6 +6,9 @@
 #include <EVENT/TrackerHit.h>
 
 #include <UTIL/CellIDDecoder.h>
+
+namespace ACTSTracking
+{
 
 //! \brief Maps DD4hep cell ID's to ACTS geometry ID's
 /**
@@ -16,13 +18,13 @@
  * @author Karol Krizka
  * @version $Id$
  */
-class ACTSGeometryIdMappingTool
+class GeometryIdMappingTool
 {
 public:
   /** Create a mapping tool using the provided encoderString to
    * interpret cell ID's.
    */
-  ACTSGeometryIdMappingTool(const std::string& encoderString);
+  GeometryIdMappingTool(const std::string& encoderString);
 
   /** Decode hit
    */
@@ -63,4 +65,4 @@ private:
 
 };
 
-#endif
+}

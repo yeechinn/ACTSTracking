@@ -13,7 +13,7 @@
 
 #include <Acts/Plugins/TGeo/TGeoDetectorElement.hpp>
 
-#include "ACTSGeometryIdMappingTool.hxx"
+#include "GeometryIdMappingTool.hxx"
 
 //! \brief Base processor for ACTS tracking
 /**
@@ -65,7 +65,7 @@ class ACTSProcBase : public marlin::Processor
  protected:
   std::string _matFile {};
 
-  std::shared_ptr<ACTSGeometryIdMappingTool> geoIDMappingTool() const;
+  std::shared_ptr<ACTSTracking::GeometryIdMappingTool> geoIDMappingTool() const;
   
   const Acts::MagneticFieldContext& magneticFieldContext() const;
   const Acts::GeometryContext& geometryContext() const;
@@ -78,7 +78,7 @@ class ACTSProcBase : public marlin::Processor
   const Acts::Surface* findSurface(const EVENT::TrackerHit* hit) const;
 
  private:
-  std::shared_ptr<ACTSGeometryIdMappingTool> _geoIDMappingTool;
+  std::shared_ptr<ACTSTracking::GeometryIdMappingTool> _geoIDMappingTool;
   
   Acts::MagneticFieldContext _magneticFieldContext;
   Acts::ConstantBField _magneticField;
