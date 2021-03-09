@@ -48,7 +48,7 @@ class ACTSTruthTrackingProc : public ACTSProcBase
  protected:
 	
   // Encoder
-  std::shared_ptr<UTIL::BitField64> m_encoder;
+  std::shared_ptr<UTIL::BitField64> _encoder;
 
   // Get the subdetector ID from a hit
   int getSubdetector(const lcio::TrackerHit* hit);
@@ -67,8 +67,8 @@ class ACTSTruthTrackingProc : public ACTSProcBase
   std::string _outputTrackRelationCollection;
 
   // Run and event counters
-  int m_eventNumber ;
-  int m_runNumber ;
+  uint32_t _eventNumber ;
+  uint32_t _runNumber ;
 
   /*
   // Track fit factory
@@ -82,7 +82,7 @@ class ACTSTruthTrackingProc : public ACTSProcBase
   double m_initialTrackError_tanL;
   double m_maxChi2perHit;
   */
-  int m_fitFails;		
+  uint32_t _fitFails;		
 };
 
 #endif

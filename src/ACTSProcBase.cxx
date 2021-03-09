@@ -64,8 +64,7 @@ void ACTSProcBase::init()
   printParameters() ;
 
   // Load geometry
-  streamlog_out(MESSAGE) << " -------------------------------------" << std::endl
-                         << " ---- Initializing tracker material from " << _matFile << " ... " << std::endl ;
+  streamlog_out(MESSAGE) << " -------------------------------------" << std::endl;
 
   streamlog_out(MESSAGE) << " -- Building magnetic field" << std::endl;
   buildBfield();
@@ -613,6 +612,10 @@ void ACTSProcBase::buildBfield()
   lcdd.field().magneticField(position,magneticFieldVector); // get the magnetic field vector from DD4hep
 
   // Build ACTS representation of field
+  // Note:
+  //  magneticFieldVector[2] = 3.57e-13
+  //  dd4hep::tesla = 1e-13
+  //  Acts::UnitConstants::T = 0.000299792
   _magneticField = Acts::ConstantBField(
       magneticFieldVector[0]/dd4hep::tesla * Acts::UnitConstants::T,
       magneticFieldVector[1]/dd4hep::tesla * Acts::UnitConstants::T,
