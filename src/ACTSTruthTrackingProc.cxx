@@ -13,8 +13,6 @@
 #include <IMPL/TrackImpl.h>
 #include <IMPL/TrackStateImpl.h>
 
-#include <Acts/Definitions/Units.hpp>
-
 #include <Acts/EventData/MultiTrajectory.hpp>
 
 #include <Acts/Propagator/EigenStepper.hpp>
@@ -30,12 +28,8 @@ using namespace Acts::UnitLiterals;
 #include "MeasurementCalibrator.hxx"
 #include "SourceLink.hxx"
 
-namespace ACTSTracking
-{
-
-//! Prototrack is a collection of measurements
-using ProtoTrack = std::vector<MeasurementContainer>;
-}
+using TrackFitterResult =
+    Acts::Result<Acts::KalmanFitterResult<ACTSTracking::SourceLink>>;
 
 // sorting by value of R(=x^2+y^2) in global coordinated so the hits are always
 // sorted from close to the IP outward
@@ -52,17 +46,16 @@ ACTSTruthTrackingProc aACTSTruthTrackingProc;
 
 ACTSTruthTrackingProc::ACTSTruthTrackingProc() : ACTSProcBase("ACTSTruthTrackingProc")
 {
-	// modify processor description
-	_description = "Build and fit tracks out of all hits associated to an MC particle" ;
+  // modify processor description
+  _description = "Build and fit tracks out of all hits associated to an MC particle" ;
 
   // Input collections - mc particles, tracker hits and the relationships between them
-	
   registerInputCollections( LCIO::TRACKERHITPLANE,
                             "TrackerHitCollectionNames" ,
                             "Name of the TrackerHit input collections",
                             _inputTrackerHitCollections ,
                             {} ) ;
-	
+
   registerInputCollections( LCIO::LCRELATION,
                             "SimTrackerHitRelCollectionNames",
                             "Name of TrackerHit SimTrackHit relation collections",
@@ -106,7 +99,7 @@ void ACTSTruthTrackingProc::init()
   trackFactory->setOption( MarlinTrk::IMarlinTrkSystem::CFG::useSmoothing,  false) ;
   trackFactory->init() ;
 
-  // Put default values for track fittingz
+  // Put default values for track fitting
   _initialTrackError_d0 = 1.e6;
   _initialTrackError_phi0 = 1.e2;
   _initialTrackError_omega = 1.e-4;
@@ -232,9 +225,9 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
 
     // Only make tracks with 3 or more hits
     if(trackHits.size() < 3) continue;
-		
-		// Sort the hits from smaller to larger radius
-		std::sort(trackHits.begin(), trackHits.end(), sort_by_radius);
+
+    // Sort the hits from smaller to larger radius
+    std::sort(trackHits.begin(), trackHits.end(), sort_by_radius);
 
     // Remove the hits on the same layers (removing those with higher R)
     EVENT::TrackerHitVec trackFilteredByRHits;
@@ -283,8 +276,6 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
     std::shared_ptr<Acts::PerigeeSurface> perigeeSurface = Acts::Surface::makeShared<Acts::PerigeeSurface>(
         Acts::Vector3{0., 0., 0.});
 
-    std::cout << "Found " << track.size() << " measurements" << std::endl;
-    
     // Set the KalmanFitter options
     //std::unique_ptr<const Acts::Logger> logger=Acts::getDefaultLogger("TrackFitting", Acts::Logging::Level::VERBOSE);
     Acts::KalmanFitterOptions<ACTSTracking::MeasurementCalibrator, Acts::VoidOutlierFinder> kfOptions
@@ -314,36 +305,28 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
 
     // build the track covariance matrix using the smearing sigmas
     Acts::BoundSymMatrix cov = Acts::BoundSymMatrix::Zero();
-    cov(Acts::eBoundLoc0  , Acts::eBoundLoc0  ) = 20_um * 20_um;
-    cov(Acts::eBoundLoc1  , Acts::eBoundLoc1  ) = 20_um * 20_um;
-    cov(Acts::eBoundTime  , Acts::eBoundTime  ) = 1_ns * 1_ns;
-    cov(Acts::eBoundPhi   , Acts::eBoundPhi   ) = 1_degree * 1_degree;
-    cov(Acts::eBoundTheta , Acts::eBoundTheta ) = 1_degree * 1_degree;
-    cov(Acts::eBoundQOverP, Acts::eBoundQOverP) = 0.01*p/(p*p);
+    cov(Acts::eBoundLoc0  , Acts::eBoundLoc0  ) = std::pow(_initialTrackError_d0              ,2);
+    cov(Acts::eBoundLoc1  , Acts::eBoundLoc1  ) = std::pow(_initialTrackError_z0              ,2);
+    cov(Acts::eBoundTime  , Acts::eBoundTime  ) = std::pow(1_ns                               ,2);
+    cov(Acts::eBoundPhi   , Acts::eBoundPhi   ) = std::pow(_initialTrackError_phi             ,2);
+    cov(Acts::eBoundTheta , Acts::eBoundTheta ) = std::pow(_initialTrackError_lambda          ,2);
+    cov(Acts::eBoundQOverP, Acts::eBoundQOverP) = std::pow(_initialTrackError_relP * p /(p*p), 2);
     
     std::shared_ptr<Acts::PerigeeSurface> particleSurface = Acts::Surface::makeShared<Acts::PerigeeSurface>(
         Acts::Vector3(mcParticle->getVertex()));
     
     Acts::BoundTrackParameters initialparams(perigeeSurface, params, mcParticle->getCharge(), cov);
-    
-    {
-      std::cout << initialparams << std::endl;
-    }
+    streamlog_out(DEBUG) << "Initial Paramemeters" << std::endl << initialparams << std::endl;
 
-    using TrackFitterResult =
-        Acts::Result<Acts::KalmanFitterResult<ACTSTracking::SourceLink>>;
-    std::cout << "trackSourceLinks.size() = " << trackSourceLinks.size() << std::endl;
     TrackFitterResult result=trackFitter.fit(trackSourceLinks, initialparams, kfOptions);
 
     if (result.ok())
     {
-      std::cout << "ALL GOOD!" << std::endl;
       const Acts::KalmanFitterResult<ACTSTracking::SourceLink>& fitOutput = result.value();
       if (fitOutput.fittedParameters)
       {
         const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.value();
-        std::cout << "Fitted paramemeters for track" << std::endl;
-        std::cout << "  " << params.parameters().transpose() << std::endl;
+        streamlog_out(DEBUG) << "Fitted Paramemeters" << std::endl << params.parameters().transpose() << std::endl;
 
         // Make the track object and relations object
         //LCRelationImpl* relationTrack = new LCRelationImpl;
@@ -374,7 +357,6 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
 
         //
         // Other track states
-        std::cout << "track tip = " << fitOutput.trackTip << std::endl;
         /** Can be used get track states at different layers
         fitOutput.fittedStates.visitBackwards(fitOutput.trackTip, [](Acts::MultiTrajectory<ACTSTracking::SourceLink>::ConstTrackStateProxy state)
         {
@@ -394,19 +376,17 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
           return true;
         });
         */
-
-        //fitOutput.fittedStates.visitBackwards(fitOutput.trackTip, [](const Acts::MultiTrajectory<ACTSTracking::SourceLink>::TrackStateProxy& state) { return true; });
         
         trackCollection->addElement(track);
       }
       else
       {
-        std::cout << "No fitted paramemeters for track" << std::endl;
+        streamlog_out(WARNING) << "No fitted paramemeters for track" << std::endl;
       }
     }
     else
     {
-      std::cout << "BAD FIT: " << result.error() << std::endl;
+      streamlog_out(WARNING) << "Track fit error: " << result.error() << std::endl;
     }
   }
     /*

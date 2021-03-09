@@ -5,6 +5,8 @@
 
 #include <UTIL/CellIDDecoder.h>
 
+#include <Acts/Definitions/Units.hpp>
+
 #include "ACTSProcBase.hxx"
 
 /**
@@ -70,18 +72,15 @@ class ACTSTruthTrackingProc : public ACTSProcBase
   uint32_t _eventNumber ;
   uint32_t _runNumber ;
 
-  /*
-  // Track fit factory
-  MarlinTrk::IMarlinTrkSystem* trackFactory;
-
   // Track fit parameters
-  double m_initialTrackError_d0;
-  double m_initialTrackError_phi0;
-  double m_initialTrackError_omega;
-  double m_initialTrackError_z0;
-  double m_initialTrackError_tanL;
-  double m_maxChi2perHit;
-  */
+  double _initialTrackError_d0     = 20  *Acts::UnitConstants::um; // Marlin: 1.e3
+  double _initialTrackError_phi    = 1   *Acts::UnitConstants::degree; // Marlin default: 1.e1
+  double _initialTrackError_relP   = 0.01; // Marlin default: 1.e-2
+  double _initialTrackError_lambda = 1   *Acts::UnitConstants::degree; // Marlin (tanlambda) default: 1.e1
+  double _initialTrackError_z0     = 100 *Acts::UnitConstants::um; // Marlin default: 1.e3
+  double _initialTrackError_time   = 1   *Acts::UnitConstants::ns; // No Marlin default
+  //double _maxChi2perHit;
+
   uint32_t _fitFails;		
 };
 
