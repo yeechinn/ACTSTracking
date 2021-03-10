@@ -338,6 +338,8 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
         track->setChi2(trajState.chi2Sum);
         track->setNdf (trajState.NDF    );
 
+        // TODO: Add hits on track
+        
         //
         // AtIP: Overall fit results as fittedParameters
 
@@ -386,6 +388,7 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
         lcioCov[ 5]=var_omega;
         lcioCov[ 9]=var_z0;
         lcioCov[14]=var_tanlambda;
+        // TODO: Add off-diagonals
 
         trackStateAtIP->setCovMatrix(lcioCov);
 
@@ -433,151 +436,6 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
       _fitFails++;
     }
   }
-    /*
-     Fit - this gets complicated. 
-     Need to pass a series of objects, including some initial states,
-     covariance matrix etc. Set these up, then call the fit.
-    */
-  /*
-		// Make the track object and relations object
-		LCRelationImpl* relationTrack = new LCRelationImpl;
-		TrackImpl* track = new TrackImpl ;
-
-    // IMarlinTrk used to fit track - IMarlinTrk interface to separete pattern recogition from fit implementation
-    MarlinTrk::IMarlinTrack* marlinTrack = trackFactory->createTrack();
-    MarlinTrk::IMarlinTrack* marlinTrackZSort = trackFactory->createTrack();
-
-    // Save a vector of the hits to be used (why is this not attached to the track directly?? MarlinTrkUtils to be updated?)
-    EVENT::TrackerHitVec trackfitHits;
-    for(unsigned int itTrackHit=0;itTrackHit<trackFilteredByRHits.size();itTrackHit++)
-      trackfitHits.push_back(trackFilteredByRHits[itTrackHit]);
-   
-
-
-		
-    // Make an initial covariance matrix with very broad default values
-    EVENT::FloatVec covMatrix (15,0); // Size 15, filled with 0s
-    covMatrix[0]  = ( m_initialTrackError_d0    ); //sigma_d0^2
-    covMatrix[2]  = ( m_initialTrackError_phi0  ); //sigma_phi0^2
-    covMatrix[5]  = ( m_initialTrackError_omega ); //sigma_omega^2
-    covMatrix[9]  = ( m_initialTrackError_z0    ); //sigma_z0^2
-    covMatrix[14] = ( m_initialTrackError_tanL  ); //sigma_tanl^2
-
-
-
-
-    bool direction = (  (m_fitForward  ) ? MarlinTrk::IMarlinTrack::forward :  MarlinTrk::IMarlinTrack::backward ) ;
-
-    int fitError = 0;
-
-
-    if (m_useTruthInPrefit) {
-
-
-      HelixTrack helix(mcParticle->getVertex(), mcParticle->getMomentum(), mcParticle->getCharge(), m_magneticField);
-  
-      double trueD0 = helix.getD0() ;
-      double truePhi = helix.getPhi0() ;
-      double trueOmega = helix.getOmega() ;
-      double trueZ0 = helix.getZ0() ;
-      double trueTanLambda = helix.getTanLambda() ;
-
-
-      //float ref_point[3] = { 0., 0., 0. };
-      helix.moveRefPoint(trackfitHits.at(0)->getPosition()[0], trackfitHits.at(0)->getPosition()[1], trackfitHits.at(0)->getPosition()[2]);
-      float ref_point[3] = {float(helix.getRefPointX()),float(helix.getRefPointY()),float(helix.getRefPointZ())} ;
-      TrackStateImpl* trkState = new TrackStateImpl(TrackState::AtIP, trueD0, truePhi, trueOmega, trueZ0, trueTanLambda, covMatrix, ref_point);
-
-      // int prefitError =  createFit(trackfitHits, marlinTrack, trkState, m_magneticField,  direction, m_maxChi2perHit);
-      // streamlog_out(DEBUG2) << "---- createFit - error_fit = " << error_fit << std::endl;
-
-      // if (prefitError == 0) {
-      //   fitError = finaliseLCIOTrack(marlinTrack, track, trackfitHits,  direction );
-      //   streamlog_out(DEBUG2) << "---- finalisedLCIOTrack - error = " << error << std::endl;
-      // }
-
-      fitError = MarlinTrk::createFinalisedLCIOTrack(marlinTrack, trackfitHits, track, direction, trkState, m_magneticField, m_maxChi2perHit);
-
-
-      //If first fit attempt fails, try a new fit with hits ordered by z
-      
-      if (fitError!=0) {        
-        
-        // Sort the hits from smaller to larger z
-        std::sort(trackfitHits.begin(),trackfitHits.end(),sort_by_z);     
-
-        // Removing the hits on the same layers (remove those with higher z)
-        EVENT::TrackerHitVec trackFilteredByZHits;
-        removeHitsSameLayer(trackfitHits, trackFilteredByZHits);
-        if(trackFilteredByZHits.size() < 3) continue;
-
-        // If fit with hits ordered by radius has failed, the track is probably a 'spiral' track. 
-        // Fitting 'backward' is very difficult for spiral track, so the default direction here is set as 'forward'
-        fitError = MarlinTrk::createFinalisedLCIOTrack(marlinTrackZSort, trackFilteredByZHits, track,  MarlinTrk::IMarlinTrack::forward, trkState, m_magneticField, m_maxChi2perHit);
-      }
-
-    
-      delete trkState;
-
-    ////////////////////////
-
-    } // end: helical prefit initialised with info from truth and then track fitted and saved as a lcio track 
-
-    else {
-
-      // DEFAULT procedure: Try to fit
-      fitError = MarlinTrk::createFinalisedLCIOTrack(marlinTrack, trackfitHits, track, direction, covMatrix, m_magneticField, m_maxChi2perHit);
-
-
-      //If first fit attempt fails, try a new fit with hits ordered by z
-      
-      if (fitError!=0) {
-
-        // we need to clean the track object
-        delete track;
-        track = new TrackImpl;
-
-        // Sort the hits from smaller to larger z
-        std::sort(trackfitHits.begin(),trackfitHits.end(),sort_by_z); 
-
-        // Removing the hits on the same layers (remove those with higher z)
-        EVENT::TrackerHitVec trackFilteredByZHits;
-        removeHitsSameLayer(trackfitHits, trackFilteredByZHits);
-        if(trackFilteredByZHits.size() < 3) continue;
-
-        // If fit with hits ordered by radius has failed, the track is probably a 'spiral' track. 
-        // Fitting 'backward' is very difficult for spiral track, so the default directiin here is set as 'forward'
-        fitError = MarlinTrk::createFinalisedLCIOTrack(marlinTrackZSort, trackFilteredByZHits, track,  MarlinTrk::IMarlinTrack::forward, covMatrix, m_magneticField, m_maxChi2perHit);
-
-      }
-
-
-    } // end: track fitted (prefit from fit from 3 hits) and saved as a lcio track
-
-    /////////////////////////////////////////////
-
-
-    streamlog_out( DEBUG2 )<<"ACTSTruthTrackingProc: fitError "<< fitError << std::endl;
-
-		// Check track quality - if fit fails chi2 will be 0
-		if(fitError!=0){ delete track; delete relationTrack; delete marlinTrack; delete marlinTrackZSort; m_fitFails++;  continue;}
-		if(track->getChi2() <= 0.){ delete track; delete relationTrack; delete marlinTrack; delete marlinTrackZSort; m_fitFails++;  continue;}
-		if(track->getNdf() <= 0.){ delete track; delete relationTrack; delete marlinTrack; delete marlinTrackZSort; m_fitFails++;  continue;}
-
-
-    std::vector<std::pair<EVENT::TrackerHit*, double> > hits_in_fit;
-    hits_in_fit.reserve(trackHits.size()); //Reserve at most the total number of hits
-    marlinTrack->getHitsInFit(hits_in_fit);
-
-
-    ///Fill hits associated to the track by pattern recognition and hits in fit
-    m_encoder->reset() ;  // reset to 0
-    MarlinTrk::addHitNumbersToTrack(track, trackHits, false, *m_encoder);
-    MarlinTrk::addHitNumbersToTrack(track, hits_in_fit, true, *m_encoder);
-
-    streamlog_out( DEBUG5 )<<"ACTSTruthTrackingProc: trackHits.size(): "<<trackHits.size()<<" trackfitHits.size(): "<<trackfitHits.size()<<" hits_in_fit.size(): "<<hits_in_fit.size()   << std::endl;
-
-  */
 
   // Save the output track collection
   evt->addCollection( trackCollection , _outputTrackCollection ) ;
