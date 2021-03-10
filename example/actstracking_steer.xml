@@ -306,8 +306,8 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
    <parameter name="TrackCollection" type="string" lcioInType="Track">TruthTracks</parameter>
 
    <!--Relations-->
-   <!--<parameter name="LCRelationCollections" type="string" lcioInType="LCRelation">SiTracks_Refitted_Relation</parameter>
-   <parameter name="LCRelationPrefixes" type="string">tr2mc</parameter>-->
+   <parameter name="LCRelationCollections" type="string" lcioInType="LCRelation">TruthTrackRelations</parameter>
+   <parameter name="LCRelationPrefixes" type="string">tr2mc</parameter>
 
    <!--verbosity level of this processor ("DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
    <parameter name="Verbosity" type="string">MESSAGE</parameter>

@@ -12,6 +12,7 @@
 
 #include <IMPL/TrackImpl.h>
 #include <IMPL/TrackStateImpl.h>
+#include <IMPL/LCRelationImpl.h>
 
 #include <Acts/EventData/MultiTrajectory.hpp>
 
@@ -141,27 +142,27 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
   LCCollection* particleCollection = getCollection(_inputParticleCollection, evt);
   if(particleCollection == nullptr) return;
 
-	// Make objects to hold all of the tracker hit, simulated hit and relation collections
-	std::vector<LCCollection*> trackerHitCollections;
-	std::vector<LCCollection*> trackerHitRelationCollections;
-	std::vector<std::shared_ptr<LCRelationNavigator>> relations;
-
-	// Loop over each input collection and get the data
-	for(unsigned int collection=0; collection<_inputTrackerHitCollections.size(); collection++)
-  {
-		// Get the collection of tracker hits
-		LCCollection* trackerHitCollection = getCollection(_inputTrackerHitCollections[collection], evt);
-    if(trackerHitCollection == nullptr) continue;
-		trackerHitCollections.push_back(trackerHitCollection);
-
-	  // Get the collection of tracker hit relations
-	  LCCollection* trackerHitRelationCollection = getCollection(_inputTrackerHitRelationCollections[collection], evt);
-		trackerHitRelationCollections.push_back(trackerHitRelationCollection);
+  // Make objects to hold all of the tracker hit, simulated hit and relation collections
+  std::vector<LCCollection*> trackerHitCollections;
+  std::vector<LCCollection*> trackerHitRelationCollections;
+  std::vector<std::shared_ptr<LCRelationNavigator>> relations;
   
-	  // Create the relations navigator
+  // Loop over each input collection and get the data
+  for(unsigned int collection=0; collection<_inputTrackerHitCollections.size(); collection++)
+  {
+    // Get the collection of tracker hits
+    LCCollection* trackerHitCollection = getCollection(_inputTrackerHitCollections[collection], evt);
+    if(trackerHitCollection == nullptr) continue;
+    trackerHitCollections.push_back(trackerHitCollection);
+
+    // Get the collection of tracker hit relations
+    LCCollection* trackerHitRelationCollection = getCollection(_inputTrackerHitRelationCollections[collection], evt);
+    trackerHitRelationCollections.push_back(trackerHitRelationCollection);
+
+    // Create the relations navigator
     std::shared_ptr<LCRelationNavigator> relation = std::make_shared<LCRelationNavigator>( trackerHitRelationCollection );
-		relations.push_back(relation);
-	}
+    relations.push_back(relation);
+  }
 
   // Make the output track collection
   LCCollectionVec* trackCollection = new LCCollectionVec( LCIO::TRACK )  ;
@@ -174,43 +175,43 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
   // Make the output particle to track relation collection
   LCCollectionVec* trackRelationCollection = new LCCollectionVec( LCIO::LCRELATION )  ;
 
- 	/* 
-   Now for each MC particle we want the list of hits belonging to it. The most 
-   efficient way is to loop over all hits once, and store the pointers in a 
-   map, with the key a pointer to the MC particle. We can then loop over each
-   MC particle at the end and get all of the hits, before making a track.
+  /* 
+     Now for each MC particle we want the list of hits belonging to it. The most 
+     efficient way is to loop over all hits once, and store the pointers in a 
+     map, with the key a pointer to the MC particle. We can then loop over each
+     MC particle at the end and get all of the hits, before making a track.
   */
   // Make the container
   std::map<MCParticle*, std::vector<TrackerHit*> > particleHits;
 
-	// Loop over all input collections
-	for(unsigned int collection=0; collection<trackerHitCollections.size(); collection++)
+  // Loop over all input collections
+  for(unsigned int collection=0; collection<trackerHitCollections.size(); collection++)
   {
-  	// Loop over tracker hits
-	  int nHits = trackerHitCollections[collection]->getNumberOfElements();
-	  for(int itHit=0;itHit<nHits;itHit++)
+    // Loop over tracker hits
+    int nHits = trackerHitCollections[collection]->getNumberOfElements();
+    for(int itHit=0;itHit<nHits;itHit++)
     {
-	    // Get the hit
-	    TrackerHitPlane* hit = dynamic_cast<TrackerHitPlane*>( trackerHitCollections[collection]->getElementAt(itHit) ) ;
+      // Get the hit
+      TrackerHitPlane* hit = dynamic_cast<TrackerHitPlane*>( trackerHitCollections[collection]->getElementAt(itHit) ) ;
       const double* globalpos = hit->getPosition();
 
-	    // Get the related simulated hit(s)
-	    const LCObjectVec& simHitVector = relations[collection]->getRelatedToObjects( hit );
+      // Get the related simulated hit(s)
+      const LCObjectVec& simHitVector = relations[collection]->getRelatedToObjects( hit );
 
-	    // Take the first hit only (this should be changed? Yes - loop over all related simHits and add an entry for each mcparticle so that this hit is in each fit)
-	    SimTrackerHit* simHit = dynamic_cast<SimTrackerHit*>(simHitVector.at(0));
+      // Take the first hit only (this should be changed? Yes - loop over all related simHits and add an entry for each mcparticle so that this hit is in each fit)
+      SimTrackerHit* simHit = dynamic_cast<SimTrackerHit*>(simHitVector.at(0));
 
-	    // If the hit was produced by a secondary which was not saved to the MCParticle collection
-	    if(simHit->isProducedBySecondary())
-	      continue;
+      // If the hit was produced by a secondary which was not saved to the MCParticle collection
+      if(simHit->isProducedBySecondary())
+        continue;
 
-	    // Get the particle belonging to that hit
-	    MCParticle* particle = simHit->getMCParticle();
+      // Get the particle belonging to that hit
+      MCParticle* particle = simHit->getMCParticle();
 
-	    // Push back the element into the container
-	    particleHits[particle].push_back(hit);
-	  }
-	}
+      // Push back the element into the container
+      particleHits[particle].push_back(hit);
+    }
+  }
 	
   // Now loop over all particles and get the list of hits
   int nParticles = particleCollection->getNumberOfElements();
@@ -329,8 +330,13 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
         streamlog_out(DEBUG) << "Fitted Paramemeters" << std::endl << params << std::endl;
 
         // Make the track object and relations object
-        //LCRelationImpl* relationTrack = new LCRelationImpl;
+        IMPL::LCRelationImpl* relationTrack = new IMPL::LCRelationImpl;
         IMPL::TrackImpl* track = new IMPL::TrackImpl ;
+
+        Acts::MultiTrajectoryHelpers::TrajectoryState trajState =
+            Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, fitOutput.trackTip);
+        track->setChi2(trajState.chi2Sum);
+        track->setNdf (trajState.NDF    );
 
         //
         // AtIP: Overall fit results as fittedParameters
@@ -380,17 +386,27 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
           return true;
         });
         */
-        
+
+        //
+        // Save results
         trackCollection->addElement(track);
+
+        // Make the particle to track link
+        relationTrack->setFrom(track);
+        relationTrack->setTo(mcParticle);
+        relationTrack->setWeight(1.0);
+        trackRelationCollection->addElement(relationTrack);
       }
       else
       {
         streamlog_out(WARNING) << "No fitted paramemeters for track" << std::endl;
+        _fitFails++;
       }
     }
     else
     {
       streamlog_out(WARNING) << "Track fit error: " << result.error() << std::endl;
+      _fitFails++;
     }
   }
     /*
@@ -537,26 +553,12 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
 
     streamlog_out( DEBUG5 )<<"ACTSTruthTrackingProc: trackHits.size(): "<<trackHits.size()<<" trackfitHits.size(): "<<trackfitHits.size()<<" hits_in_fit.size(): "<<hits_in_fit.size()   << std::endl;
 
-    
-    
-    
-    // Push back to the output container
-    trackCollection->addElement(track);
-		
-    // Make the particle to track link
-    relationTrack->setFrom(track);
-    relationTrack->setTo(mcParticle);
-    relationTrack->setWeight(1.0);
-    trackRelationCollection->addElement(relationTrack);
-
-		delete marlinTrack;
-		delete marlinTrackZSort;
   */
 
   // Save the output track collection
   evt->addCollection( trackCollection , _outputTrackCollection ) ;
   // Save the output particle to track relation collection
-  //evt->addCollection( trackRelationCollection , m_outputTrackRelationCollection ) ;
+  evt->addCollection( trackRelationCollection , _outputTrackRelationCollection ) ;
 
   // Increment the event number
   _eventNumber++ ;
