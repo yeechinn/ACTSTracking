@@ -365,6 +365,30 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
         trackStateAtIP->setD0       (d0);
         trackStateAtIP->setZ0       (z0);
 
+        // Fill the covariance matrix
+        //d0, phi, omega, z0, tan(lambda)
+        Acts::BoundTrackParameters::CovarianceMatrix cov=params.covariance().value();
+
+        double var_d0    =cov(Acts::eBoundLoc0  , Acts::eBoundLoc0  );
+        double var_z0    =cov(Acts::eBoundLoc1  , Acts::eBoundLoc1  );
+        double var_phi   =cov(Acts::eBoundPhi   , Acts::eBoundPhi   );
+        double var_theta =cov(Acts::eBoundTheta , Acts::eBoundTheta );
+        double var_qoverp=cov(Acts::eBoundQOverP, Acts::eBoundQOverP);
+
+        double var_omega    =
+            var_qoverp*std::pow(omega/(qoverp*1e-3)      , 2) +
+            var_theta *std::pow(omega/std::tan(var_theta), 2);
+        double var_tanlambda=var_theta*std::pow(1/std::cos(theta), 4);
+        
+        FloatVec lcioCov(15, 0);
+        lcioCov[ 0]=var_d0;
+        lcioCov[ 2]=var_phi;
+        lcioCov[ 5]=var_omega;
+        lcioCov[ 9]=var_z0;
+        lcioCov[14]=var_tanlambda;
+
+        trackStateAtIP->setCovMatrix(lcioCov);
+
         //
         // Other track states
         /** Can be used get track states at different layers
