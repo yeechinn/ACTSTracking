@@ -255,9 +255,9 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
       Acts::Vector2 loc = lpResult.value();
 
       Acts::SymMatrix2 cov = Acts::SymMatrix2::Zero();
-      cov(0, 0) = hit->getCovMatrix()[0]; // xx
+      cov(0, 0) = std::pow(10_um, 2); // hit->getCovMatrix()[0]; // xx
       cov(0, 1) = hit->getCovMatrix()[1]; // yx
-      cov(1, 1) = hit->getCovMatrix()[2]; // yy
+      cov(1, 1) = std::pow(10_um, 2); // hit->getCovMatrix()[2]; // yy
       cov(1, 0) = hit->getCovMatrix()[1]; // yx
 
       ACTSTracking::SourceLink sourceLink(surface->geometryId(), track.size());
@@ -294,16 +294,16 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
 
     Acts::BoundVector params = Acts::BoundVector::Zero();
     // position/time
-    params[Acts::eBoundLoc0 ] = 0;
-    params[Acts::eBoundLoc1 ] = 0;
-    params[Acts::eBoundTime ] = mcParticle->getTime();
+    params[Acts::eBoundLoc0  ] = 0;
+    params[Acts::eBoundLoc1  ] = 0;
+    params[Acts::eBoundTime  ] = mcParticle->getTime();
     // direction angles phi,theta
-    params[Acts::eBoundPhi  ] = atan2(py,px);
-    params[Acts::eBoundTheta] = atan2(pt,pz);
+    params[Acts::eBoundPhi   ] = atan2(py,px);
+    params[Acts::eBoundTheta ] = atan2(pt,pz);
     // absolute momentum vector
     params[Acts::eBoundQOverP] = mcParticle->getCharge()/p;
 
-    // build the track covariance matrix using the smearing sigmas
+    // build the track covariance matrix using the smearing sigmas 
     Acts::BoundSymMatrix cov = Acts::BoundSymMatrix::Zero();
     cov(Acts::eBoundLoc0  , Acts::eBoundLoc0  ) = std::pow(_initialTrackError_d0              ,2);
     cov(Acts::eBoundLoc1  , Acts::eBoundLoc1  ) = std::pow(_initialTrackError_z0              ,2);
@@ -314,7 +314,7 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
     
     std::shared_ptr<Acts::PerigeeSurface> particleSurface = Acts::Surface::makeShared<Acts::PerigeeSurface>(
         Acts::Vector3(mcParticle->getVertex()));
-    
+
     Acts::BoundTrackParameters initialparams(perigeeSurface, params, mcParticle->getCharge(), cov);
     streamlog_out(DEBUG) << "Initial Paramemeters" << std::endl << initialparams << std::endl;
 
@@ -326,7 +326,7 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
       if (fitOutput.fittedParameters)
       {
         const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.value();
-        streamlog_out(DEBUG) << "Fitted Paramemeters" << std::endl << params.parameters().transpose() << std::endl;
+        streamlog_out(DEBUG) << "Fitted Paramemeters" << std::endl << params << std::endl;
 
         // Make the track object and relations object
         //LCRelationImpl* relationTrack = new LCRelationImpl;
@@ -342,11 +342,13 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
         // Fill the parameters
         static const Acts::Vector3 zeropos(0,0,0);
 
+        double d0    =params.parameters()[Acts::eBoundLoc0  ];
+        double z0    =params.parameters()[Acts::eBoundLoc1  ];
         double phi   =params.parameters()[Acts::eBoundPhi   ];
         double theta =params.parameters()[Acts::eBoundTheta ];
         double qoverp=params.parameters()[Acts::eBoundQOverP];
         
-        double p=1./std::abs(qoverp);
+        double p=1e3/qoverp;
         double Bz=magneticField().getField(zeropos)[2]/Acts::UnitConstants::T;
         double omega=(0.3*Bz)/(p*std::sin(theta));
         double tanlambda=std::tan(theta);
@@ -354,6 +356,8 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
         trackStateAtIP->setPhi      (phi);
         trackStateAtIP->setTanLambda(tanlambda);
         trackStateAtIP->setOmega    (omega);
+        trackStateAtIP->setD0       (d0);
+        trackStateAtIP->setZ0       (z0);
 
         //
         // Other track states
