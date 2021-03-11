@@ -256,10 +256,14 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
       Acts::Vector2 loc = lpResult.value();
 
       Acts::SymMatrix2 cov = Acts::SymMatrix2::Zero();
-      cov(0, 0) = std::pow(10_um, 2); // hit->getCovMatrix()[0]; // xx
-      cov(0, 1) = hit->getCovMatrix()[1]; // yx
-      cov(1, 1) = std::pow(10_um, 2); // hit->getCovMatrix()[2]; // yy
-      cov(1, 0) = hit->getCovMatrix()[1]; // yx
+      const EVENT::TrackerHitPlane* hitplane=dynamic_cast<const EVENT::TrackerHitPlane*>(hit);
+      if(hitplane)
+      {
+        cov(0, 0) = std::pow(hitplane->getdU()*Acts::UnitConstants::mm, 2);
+        cov(1, 1) = std::pow(hitplane->getdV()*Acts::UnitConstants::mm, 2);
+      }
+      else
+      { throw std::runtime_error("Currently only support TrackerHitPlane."); }
 
       ACTSTracking::SourceLink sourceLink(surface->geometryId(), track.size());
       ACTSTracking::Measurement meas =
