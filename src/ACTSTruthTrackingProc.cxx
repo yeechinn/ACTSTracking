@@ -452,9 +452,8 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
 
 void ACTSTruthTrackingProc::check( LCEvent* )
 {
-	// nothing to check here - could be used to fill checkplots in reconstruction processor
+  // nothing to check here - could be used to fill checkplots in reconstruction processor
 }
-
 
 void ACTSTruthTrackingProc::end()
 {
