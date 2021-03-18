@@ -125,7 +125,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <parameter name="CorrectTimesForPropagation" type="bool" value="true"/>
     <parameter name="TimeWindowMin" type="float"> -0.15 </parameter>
     <parameter name="TimeWindowMax" type="float"> 0.15 </parameter>
-    <parameter name="Verbosity" type="string"> DEBUG4 </parameter>
+    <parameter name="Verbosity" type="string"> WARNING </parameter>
   </processor>
 
   <processor name="VXDEndcapDigitiser" type="DDPlanarDigiProcessor">

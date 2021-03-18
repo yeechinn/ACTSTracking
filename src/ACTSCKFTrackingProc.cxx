@@ -108,6 +108,13 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
   {
     const MCParticle* mcParticle = static_cast<const MCParticle*>(particleCollection->getElementAt(idxP));
 
+    // Tracks are made by stable charged particles from generation
+    if(mcParticle->isCreatedInSimulation() ||
+       mcParticle->getGeneratorStatus()!=1 ||
+       mcParticle->getCharge()==0)
+      continue;
+
+    // Create initial parameters
     double px=mcParticle->getMomentum()[0];
     double py=mcParticle->getMomentum()[1];
     double pz=mcParticle->getMomentum()[2];
