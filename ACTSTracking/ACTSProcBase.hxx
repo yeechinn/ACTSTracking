@@ -6,8 +6,8 @@
 #include <Acts/Geometry/GeometryContext.hpp>
 #include <Acts/Geometry/TrackingGeometry.hpp>
 
+#include <Acts/MagneticField/MagneticFieldProvider.hpp>
 #include <Acts/MagneticField/MagneticFieldContext.hpp>
-#include <Acts/MagneticField/ConstantBField.hpp>
 
 #include <Acts/Utilities/CalibrationContext.hpp>
 
@@ -71,7 +71,7 @@ class ACTSProcBase : public marlin::Processor
   const Acts::GeometryContext& geometryContext() const;
   const Acts::CalibrationContext& calibrationContext() const;
 
-  const Acts::ConstantBField& magneticField() const;
+  std::shared_ptr<Acts::MagneticFieldProvider> magneticField() const;
   std::shared_ptr<const Acts::TrackingGeometry> trackingGeometry() const;
 
   //! Find surface for hit
@@ -81,7 +81,7 @@ class ACTSProcBase : public marlin::Processor
   std::shared_ptr<ACTSTracking::GeometryIdMappingTool> _geoIDMappingTool;
   
   Acts::MagneticFieldContext _magneticFieldContext;
-  Acts::ConstantBField _magneticField;
+  std::shared_ptr<Acts::MagneticFieldProvider> _magneticField;
 
   Acts::GeometryContext _geometryContext;
   DetectorStore _detectorStore;

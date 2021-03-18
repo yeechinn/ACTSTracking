@@ -250,9 +250,9 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
 
   <processor name="MyCKFTracking" type="ACTSCKFTrackingProc">
     <!--Path to material description-->
-    <parameter name="MatFile" type="string">
+    <!--<parameter name="MatFile" type="string">
       ${PROJECT_SOURCE_DIR}/data/material-maps.json
-    </parameter>
+    </parameter>-->
     <!--Define input tracker hits and relations. NB. Order must be respected -->
     <parameter name="TrackerHitCollectionNames" type="StringVec" lcioInType="TrackerHitPlane">
       VXDTrackerHits

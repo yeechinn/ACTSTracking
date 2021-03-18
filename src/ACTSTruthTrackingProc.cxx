@@ -123,8 +123,7 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
 {
   using Updater = Acts::GainMatrixUpdater;
   using Smoother = Acts::GainMatrixSmoother;
-  using MagneticField = Acts::ConstantBField;
-  using Stepper = Acts::EigenStepper<MagneticField>;
+  using Stepper = Acts::EigenStepper<>;
   using Navigator = Acts::Navigator;
   using Propagator = Acts::Propagator<Stepper, Navigator>;
   using Fitter = Acts::KalmanFitter<Propagator, Updater, Smoother>;
@@ -361,7 +360,7 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
         double qoverp=params.parameters()[Acts::eBoundQOverP];
         
         double p=1e3/qoverp;
-        double Bz=magneticField().getField(zeropos)[2]/Acts::UnitConstants::T;
+        double Bz=magneticField()->getField(zeropos)[2]/Acts::UnitConstants::T;
         double omega=(0.3*Bz)/(p*std::sin(theta));
         double tanlambda=std::tan(theta);
 

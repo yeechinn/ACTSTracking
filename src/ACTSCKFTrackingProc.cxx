@@ -23,7 +23,7 @@
 #include <Acts/Surfaces/PerigeeSurface.hpp>
 
 #include <Acts/TrackFinding/CombinatorialKalmanFilter.hpp>
-#include <Acts/TrackFinding/CKFSourceLinkSelector.hpp>
+#include <Acts/TrackFinding/MeasurementSelector.hpp>
 
 #include <Acts/TrackFitting/GainMatrixSmoother.hpp>
 #include <Acts/TrackFitting/GainMatrixUpdater.hpp>
@@ -35,10 +35,13 @@ using namespace Acts::UnitLiterals;
 
 using TrackFinderOptions =
     Acts::CombinatorialKalmanFilterOptions<ACTSTracking::MeasurementCalibrator,
-                                           Acts::CKFSourceLinkSelector>;
+                                           Acts::MeasurementSelector>;
 
 using TrackFinderResult =
     Acts::Result<Acts::CombinatorialKalmanFilterResult<ACTSTracking::SourceLink>>;
+
+using TrackFinderResultContainer =
+    std::vector<TrackFinderResult>;
 
 ACTSCKFTrackingProc aACTSCKFTrackingProc;
 
@@ -189,8 +192,7 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
   // Initialize track finder
   using Updater = Acts::GainMatrixUpdater;
   using Smoother = Acts::GainMatrixSmoother;
-  using MagneticField = Acts::ConstantBField;
-  using Stepper = Acts::EigenStepper<MagneticField>;
+  using Stepper = Acts::EigenStepper<>;
   using Navigator = Acts::Navigator;
   using Propagator = Acts::Propagator<Stepper, Navigator>;
   using CKF =
@@ -206,7 +208,7 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
   CKF trackFinder(std::move(propagator));
 
   // Set the options
-  Acts::CKFSourceLinkSelector::Config sourcelinkSelectorCfg={{Acts::GeometryIdentifier(), {15,10}}};
+  Acts::MeasurementSelector::Config measurementSelectorCfg={{Acts::GeometryIdentifier(), {15,10}}};
 
   Acts::PropagatorPlainOptions pOptions;
   pOptions.maxSteps = 10000;
@@ -216,7 +218,7 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
       =TrackFinderOptions(
           geometryContext(), magneticFieldContext(), calibrationContext(),
           ACTSTracking::MeasurementCalibrator(std::move(measurements)),
-          Acts::CKFSourceLinkSelector(sourcelinkSelectorCfg),
+          Acts::MeasurementSelector(measurementSelectorCfg),
           //Acts::LoggerWrapper{*logger}, pOptions,
           Acts::getDummyLogger(), pOptions,
           &(*perigeeSurface));
@@ -234,9 +236,9 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
 
   //
   // Find the tracks
-  for(const Acts::BoundTrackParameters& initialParams : seeds)
+  TrackFinderResultContainer results=trackFinder.findTracks(sourceLinks, seeds, ckfOptions);
+  for (TrackFinderResult& result : results)
   {
-    TrackFinderResult result=trackFinder.findTracks(sourceLinks, initialParams, ckfOptions);
     if (result.ok())
     {
       const Acts::CombinatorialKalmanFilterResult<ACTSTracking::SourceLink>& fitOutput = result.value();
@@ -260,7 +262,7 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
         track->setNdf (trajState.NDF    );
 
         // TODO: Add hits on track
-        
+  
         //
         // AtIP: Overall fit results as fittedParameters
 
@@ -276,9 +278,9 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
         double phi   =params.parameters()[Acts::eBoundPhi   ];
         double theta =params.parameters()[Acts::eBoundTheta ];
         double qoverp=params.parameters()[Acts::eBoundQOverP];
-        
+
         double p=1e3/qoverp;
-        double Bz=magneticField().getField(zeropos)[2]/Acts::UnitConstants::T;
+        double Bz=magneticField()->getField(zeropos)[2]/Acts::UnitConstants::T;
         double omega=(0.3*Bz)/(p*std::sin(theta));
         double tanlambda=std::tan(theta);
 
@@ -302,7 +304,7 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
             var_qoverp*std::pow(omega/(qoverp*1e-3)      , 2) +
             var_theta *std::pow(omega/std::tan(var_theta), 2);
         double var_tanlambda=var_theta*std::pow(1/std::cos(theta), 4);
-        
+
         FloatVec lcioCov(15, 0);
         lcioCov[ 0]=var_d0;
         lcioCov[ 2]=var_phi;
@@ -316,7 +318,6 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
         //
         // Save results
         trackCollection->addElement(track);
-      }
 
       // // Can be used get track states at different layers
       // for(size_t trackTip : fitOutput.trackTips)
@@ -327,9 +328,9 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
       //     const Acts::TrackStateType& typeFlags = state.typeFlags();
       //     if(!typeFlags.test(Acts::TrackStateFlag::MeasurementFlag))
       //       return true;
-          
+
       //     const Acts::Surface& surface = state.referenceSurface();
-          
+
       //     const Acts::GeometryIdentifier& geoID = surface.geometryId();
       //     std::cout << "volume = " << geoID.volume() << std::endl;
       //     std::cout << "layer = " << geoID.layer() << std::endl;
@@ -340,6 +341,7 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
       //     return true;
       //   });
       // }
+      }
     }
     else
     {

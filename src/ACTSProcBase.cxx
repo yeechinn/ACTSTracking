@@ -12,6 +12,8 @@
 #include <Acts/Geometry/TrackingGeometryBuilder.hpp>
 #include <Acts/Geometry/TrackingVolumeArrayCreator.hpp>
 
+#include <Acts/MagneticField/ConstantBField.hpp>
+
 #include <Acts/Plugins/Json/JsonMaterialDecorator.hpp>
 
 #include <Acts/Plugins/TGeo/TGeoDetectorElement.hpp>
@@ -48,7 +50,7 @@ const Acts::GeometryContext& ACTSProcBase::geometryContext() const
 const Acts::CalibrationContext& ACTSProcBase::calibrationContext() const
 { return _calibrationContext; }
 
-const Acts::ConstantBField& ACTSProcBase::magneticField() const
+std::shared_ptr<Acts::MagneticFieldProvider> ACTSProcBase::magneticField() const
 { return _magneticField; }
 
 std::shared_ptr<const Acts::TrackingGeometry> ACTSProcBase::trackingGeometry() const
@@ -104,7 +106,7 @@ void ACTSProcBase::buildDetector()
   if(!_matFile.empty())
   {
     // Set up the converter first
-    Acts::JsonGeometryConverter::Config jsonGeoConvConfig;
+    Acts::MaterialMapJsonConverter::Config jsonGeoConvConfig;
     // Set up the json-based decorator
     matDeco = std::make_shared<const Acts::JsonMaterialDecorator>(
         jsonGeoConvConfig, _matFile);
@@ -621,7 +623,7 @@ void ACTSProcBase::buildBfield()
   //  magneticFieldVector[2] = 3.57e-13
   //  dd4hep::tesla = 1e-13
   //  Acts::UnitConstants::T = 0.000299792
-  _magneticField = Acts::ConstantBField(
+  _magneticField = std::make_shared<Acts::ConstantBField>(
       magneticFieldVector[0]/dd4hep::tesla * Acts::UnitConstants::T,
       magneticFieldVector[1]/dd4hep::tesla * Acts::UnitConstants::T,
       magneticFieldVector[2]/dd4hep::tesla * Acts::UnitConstants::T
