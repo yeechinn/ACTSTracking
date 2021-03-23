@@ -15,7 +15,7 @@ using MeasurementContainer = std::vector<Measurement>;
 class MeasurementCalibrator
 {
  public:
-    /// Construct an invalid calibrator. Required to allow copying.
+  /// Construct an invalid calibrator. Required to allow copying.
   MeasurementCalibrator() = default;
   /// Construct using a user-provided container to chose measurements from.
   MeasurementCalibrator(const MeasurementContainer& measurements)

@@ -40,6 +40,8 @@ ADD_LIBRARY(ACTSTracking SHARED
   ./src/ACTSProcBase.cxx
   ./src/ACTSTruthTrackingProc.cxx
   ./src/ACTSCKFTrackingProc.cxx
+  ./src/ACTSSeedingProc.cxx
+  ./src/GeometryIdSelector.cxx
   ./src/GeometryIdMappingTool.cxx
   )
 TARGET_INCLUDE_DIRECTORIES(ACTSTracking PRIVATE ./ACTSTracking ${Marlin_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})

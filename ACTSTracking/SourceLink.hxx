@@ -40,9 +40,6 @@ class SourceLink final
   }
 };
 
-/// Container of index source links.
-///
-/// Since the source links provide a `.geometryId()` accessor, they can be
-/// stored in an ordered geometry container.
-using SourceLinkContainer = GeometryIdMultiset<SourceLink>;
+/// Container of index source links
+using SourceLinkContainer = std::vector<SourceLink>;
 }

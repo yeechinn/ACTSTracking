@@ -72,7 +72,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
 
   <processor name="MyAIDAProcessor" type="AIDAProcessor">
     <parameter name="FileName" type="string">
-      lctuple_actstracking
+      lctuple_actstruthckf
     </parameter>
     <parameter name="FileType" type="string">root</parameter>
   </processor>

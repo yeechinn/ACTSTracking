@@ -33,7 +33,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <processor name="OuterEndcapPlanarDigiProcessor"/>
 
     <!-- ==========  Tracking  ========== -->
-    <processor name="MyTruthTracking"/>
+    <processor name="MyCKFTracking"/>
 
     <!-- ==========  Output  ========== -->
     <processor name="MergeHits" />
@@ -72,7 +72,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
 
   <processor name="MyAIDAProcessor" type="AIDAProcessor">
     <parameter name="FileName" type="string">
-      lctuple_actstracking
+      lctuple_actsseededckf
     </parameter>
     <parameter name="FileType" type="string">root</parameter>
   </processor>
@@ -248,7 +248,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
 
   <!-- == TruthTrackFinder parameters == -->
 
-  <processor name="MyTruthTracking" type="ACTSTruthTrackingProc">
+  <processor name="MyCKFTracking" type="ACTSSeedingProc">
     <!--Path to material description-->
     <parameter name="MatFile" type="string">
       ${PROJECT_SOURCE_DIR}/data/material-maps.json
@@ -274,8 +274,6 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
       OuterInnerTrackerEndcapHitsRelations
       OuterTrackerEndcapHitsRelations
     </parameter>
-    <!--Name of the MCParticle input collection-->
-    <parameter name="MCParticleCollectionName" type="string" lcioInType="MCParticle">MCParticle </parameter>
     <!--Silicon track Collection Name-->
     <parameter name="TruthTrackCollectionName" type="string" lcioOutType="Track">TruthTracks</parameter>
     <!--Silicon track particle relation Collection Name-->
@@ -300,7 +298,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
    <parameter name="MCParticleCollection" type="string" lcioInType="MCParticle">MCParticle</parameter>
 
    <!--Name of the TrackerHit collection-->
-   <!--<parameter name="TrackerHitCollection" type="string" lcioInType="TrackerHit">HitsCollection</parameter>-->
+   <parameter name="TrackerHitCollection" type="string" lcioInType="TrackerHit">HitsCollection</parameter>
 
    <!--Name of the Track collection-->
    <parameter name="TrackCollection" type="string" lcioInType="Track">TruthTracks</parameter>
