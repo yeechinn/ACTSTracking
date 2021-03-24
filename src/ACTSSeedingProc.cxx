@@ -101,11 +101,20 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
   // layers within the volume.
   ACTSTracking::GeometryIdSelector geometrySelection ({
       // vertex negative endcap
-      Acts::GeometryIdentifier().setVolume(13),
+      Acts::GeometryIdentifier().setVolume(13).setLayer( 4),
+      Acts::GeometryIdentifier().setVolume(13).setLayer( 8),
+      Acts::GeometryIdentifier().setVolume(13).setLayer(12),
+      Acts::GeometryIdentifier().setVolume(13).setLayer(16),
       // vertex barrel
-      Acts::GeometryIdentifier().setVolume(14),
+      Acts::GeometryIdentifier().setVolume(14).setLayer( 2),
+      Acts::GeometryIdentifier().setVolume(14).setLayer( 6),
+      Acts::GeometryIdentifier().setVolume(14).setLayer(10),
+      Acts::GeometryIdentifier().setVolume(14).setLayer(14),
       // vertex positive endcap
-      Acts::GeometryIdentifier().setVolume(15)
+      Acts::GeometryIdentifier().setVolume(15).setLayer( 2),
+      Acts::GeometryIdentifier().setVolume(15).setLayer( 6),
+      Acts::GeometryIdentifier().setVolume(15).setLayer(10),
+      Acts::GeometryIdentifier().setVolume(15).setLayer(14)
     });
 
   //
@@ -326,7 +335,7 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
     Acts::BoundSymMatrix cov = Acts::BoundSymMatrix::Zero();
     cov(Acts::eBoundLoc0  , Acts::eBoundLoc0  ) = std::pow(_initialTrackError_d0              ,2);
     cov(Acts::eBoundLoc1  , Acts::eBoundLoc1  ) = std::pow(_initialTrackError_z0              ,2);
-    cov(Acts::eBoundTime  , Acts::eBoundTime  ) = std::pow(1_ns                               ,2);
+    cov(Acts::eBoundTime  , Acts::eBoundTime  ) = std::pow(_initialTrackError_time            ,2);
     cov(Acts::eBoundPhi   , Acts::eBoundPhi   ) = std::pow(_initialTrackError_phi             ,2);
     cov(Acts::eBoundTheta , Acts::eBoundTheta ) = std::pow(_initialTrackError_lambda          ,2);
     cov(Acts::eBoundQOverP, Acts::eBoundQOverP) = std::pow(_initialTrackError_relP * p /(p*p), 2);
