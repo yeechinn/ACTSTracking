@@ -300,7 +300,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
    <parameter name="MCParticleCollection" type="string" lcioInType="MCParticle">MCParticle</parameter>
 
    <!--Name of the TrackerHit collection-->
-   <!--<parameter name="TrackerHitCollection" type="string" lcioInType="TrackerHit">HitsCollection</parameter>-->
+   <parameter name="TrackerHitCollection" type="string" lcioInType="TrackerHit">HitsCollection</parameter>
 
    <!--Name of the Track collection-->
    <parameter name="TrackCollection" type="string" lcioInType="Track">TruthTracks</parameter>

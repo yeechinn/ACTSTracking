@@ -11,7 +11,6 @@
 #include <UTIL/LCTrackerConf.h>
 
 #include <IMPL/TrackImpl.h>
-#include <IMPL/TrackStateImpl.h>
 #include <IMPL/LCRelationImpl.h>
 
 #include <Acts/EventData/MultiTrajectory.hpp>
@@ -36,10 +35,11 @@
 
 using namespace Acts::UnitLiterals;
 
-#include "MeasurementCalibrator.hxx"
 #include "GeometryIdSelector.hxx"
-#include "SourceLink.hxx"
+#include "Helpers.hxx"
+#include "MeasurementCalibrator.hxx"
 #include "SeedSpacePoint.hxx"
+#include "SourceLink.hxx"
 
 // Track fitting definitions
 using TrackFinderOptions =
@@ -59,6 +59,27 @@ ACTSSeedingProc::ACTSSeedingProc() : ACTSProcBase("ACTSSeedingProc")
   // modify processor description
   _description = "Build and fit tracks out of all hits associated to an MC particle" ;
 
+  // Settings
+  registerProcessorParameter("InitialTrackError_RelP",
+                             "Track error estimate, momentum component (relative)",
+                             _initialTrackError_relP,
+                             0.25);
+
+  registerProcessorParameter("InitialTrackError_Phi",
+                             "Track error estimate, phi (radians)",
+                             _initialTrackError_phi,
+                             1_degree);
+
+  registerProcessorParameter("InitialTrackError_Lambda",
+                             "Track error estimate, lambda (radians)",
+                             _initialTrackError_lambda,
+                             1_degree);
+
+  registerProcessorParameter("InitialTrackError_Pos",
+                             "Track error estimate, local position (mm)",
+                             _initialTrackError_pos,
+                             10_um);
+
   // Input collections - mc particles, tracker hits and the relationships between them
   registerInputCollections( LCIO::TRACKERHITPLANE,
                             "TrackerHitCollectionNames" ,
@@ -68,10 +89,16 @@ ACTSSeedingProc::ACTSSeedingProc() : ACTSProcBase("ACTSSeedingProc")
 
   // Output collections - tracks and relations
   registerOutputCollection( LCIO::TRACK,
+                            "SeedCollectionName",
+                            "Name of seed output collection",
+                            _outputSeedCollection,
+                            std::string("SeedTracks"));
+
+  registerOutputCollection( LCIO::TRACK,
                             "TrackCollectionName",
                             "Name of track output collection",
                             _outputTrackCollection,
-                            std::string("TruthTracks"));
+                            std::string("SeededCKFTracks"));
 }
 
 void ACTSSeedingProc::init()
@@ -82,9 +109,6 @@ void ACTSSeedingProc::init()
   _runNumber = 0 ;
   _eventNumber = 0 ;
   _fitFails = 0;
-
-  //Initialize CellID encoder
-  _encoder = std::make_shared<UTIL::BitField64>(lcio::LCTrackerCellID::encoding_string());
 }
 
 
@@ -120,6 +144,7 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
   //
   // Prepare the output
   // Make the output track collection
+  LCCollectionVec* seedCollection  = new LCCollectionVec( LCIO::TRACK )  ;
   LCCollectionVec* trackCollection = new LCCollectionVec( LCIO::TRACK )  ;
 
   // Enable the track collection to point back to hits
@@ -326,24 +351,40 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
     }
 
     const Acts::BoundVector& params = optParams.value();
-    streamlog_out(DEBUG) << "Seed Paramemeters" << std::endl << params << std::endl;
 
     float charge = std::copysign(1, params[Acts::eBoundQOverP]);
     float p = std::abs(1/params[Acts::eBoundQOverP]);
 
     // build the track covariance matrix using the smearing sigmas 
     Acts::BoundSymMatrix cov = Acts::BoundSymMatrix::Zero();
-    cov(Acts::eBoundLoc0  , Acts::eBoundLoc0  ) = std::pow(_initialTrackError_d0              ,2);
-    cov(Acts::eBoundLoc1  , Acts::eBoundLoc1  ) = std::pow(_initialTrackError_z0              ,2);
+    cov(Acts::eBoundLoc0  , Acts::eBoundLoc0  ) = std::pow(_initialTrackError_pos             ,2);
+    cov(Acts::eBoundLoc1  , Acts::eBoundLoc1  ) = std::pow(_initialTrackError_pos             ,2);
     cov(Acts::eBoundTime  , Acts::eBoundTime  ) = std::pow(_initialTrackError_time            ,2);
     cov(Acts::eBoundPhi   , Acts::eBoundPhi   ) = std::pow(_initialTrackError_phi             ,2);
     cov(Acts::eBoundTheta , Acts::eBoundTheta ) = std::pow(_initialTrackError_lambda          ,2);
-    cov(Acts::eBoundQOverP, Acts::eBoundQOverP) = std::pow(_initialTrackError_relP * p /(p*p), 2);
+    cov(Acts::eBoundQOverP, Acts::eBoundQOverP) = std::pow(_initialTrackError_relP * p /(p*p) ,2);
 
     Acts::BoundTrackParameters paramseed(surface->getSharedPtr(), params, charge, cov);
     paramseeds.push_back(paramseed);
 
-    continue; // only use first one, temporary
+    //
+    // Add seed to LCIO collection
+    IMPL::TrackImpl* seedtrack = new IMPL::TrackImpl;
+    seedCollection->addElement(seedtrack);
+
+    Acts::Vector3 globalPos = surface->localToGlobal(geometryContext(),
+                                                     {params[Acts::eBoundLoc0], params[Acts::eBoundLoc1]},
+                                                     {0,0,0});
+
+    EVENT::TrackState* seedTrackState
+        = ACTSTracking::ACTS2Marlin_trackState(
+            lcio::TrackState::AtFirstHit,
+            paramseed,
+            magneticField()->getField(globalPos)[2]/Acts::UnitConstants::T
+                                               );
+    seedtrack->trackStates().push_back(seedTrackState);
+
+    streamlog_out(DEBUG) << "Seed Paramemeters" << std::endl << paramseed << std::endl;
   }
 
   //
@@ -407,6 +448,45 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
 
         // Make the track object and relations object
         IMPL::TrackImpl* track = new IMPL::TrackImpl ;
+        /*
+        fitOutput.fittedStates.visitBackwards(trackTip, [&](const auto& state)
+        {
+          std::cout << "Trajectory State " << state.typeFlags() << std::endl;
+
+          const Acts::GeometryIdentifier& geoID = state.referenceSurface().geometryId();
+          std::cout << "Geometry ID: " << geoID << std::endl;
+
+          // no truth info with non-measurement state
+          if (state.typeFlags().test(Acts::TrackStateFlag::MeasurementFlag))
+          {
+            // register all particles that generated this hit
+            auto hitIndex = state.uncalibrated().index();
+            std::cout << "Hit Index: " << hitIndex << std::endl;
+          }
+
+          if (state.hasPredicted())
+          {
+            std::cout << "Predicted parameters" << std::endl;
+            std::cout << state.predicted() << std::endl;
+            std::cout << state.predictedCovariance() << std::endl;
+          }
+          if (state.hasFiltered())
+          {
+            std::cout << "Filtered parameters" << std::endl;
+            std::cout << state.filtered() << std::endl;
+            std::cout << state.filteredCovariance() << std::endl;
+          }
+          if (state.hasSmoothed())
+          {
+            std::cout << "Smoothed parameters" << std::endl;
+            std::cout << state.smoothed() << std::endl;
+            std::cout << state.smoothedCovariance() << std::endl;
+          }
+
+
+          return true;
+        });
+        */
 
         Acts::MultiTrajectoryHelpers::TrajectoryState trajState =
             Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, trackTip);
@@ -417,55 +497,15 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
   
         //
         // AtIP: Overall fit results as fittedParameters
-
-        IMPL::TrackStateImpl* trackStateAtIP = new IMPL::TrackStateImpl();
-        trackStateAtIP->setLocation(lcio::TrackState::AtIP);
-        track->trackStates().push_back(trackStateAtIP);
-
-        // Fill the parameters
         static const Acts::Vector3 zeropos(0,0,0);
 
-        double d0    =params.parameters()[Acts::eBoundLoc0  ];
-        double z0    =params.parameters()[Acts::eBoundLoc1  ];
-        double phi   =params.parameters()[Acts::eBoundPhi   ];
-        double theta =params.parameters()[Acts::eBoundTheta ];
-        double qoverp=params.parameters()[Acts::eBoundQOverP];
-
-        double p=1e3/qoverp;
-        double Bz=magneticField()->getField(zeropos)[2]/Acts::UnitConstants::T;
-        double omega=(0.3*Bz)/(p*std::sin(theta));
-        double tanlambda=std::tan(theta);
-
-        trackStateAtIP->setPhi      (phi);
-        trackStateAtIP->setTanLambda(tanlambda);
-        trackStateAtIP->setOmega    (omega);
-        trackStateAtIP->setD0       (d0);
-        trackStateAtIP->setZ0       (z0);
-
-        // Fill the covariance matrix
-        //d0, phi, omega, z0, tan(lambda)
-        Acts::BoundTrackParameters::CovarianceMatrix cov=params.covariance().value();
-
-        double var_d0    =cov(Acts::eBoundLoc0  , Acts::eBoundLoc0  );
-        double var_z0    =cov(Acts::eBoundLoc1  , Acts::eBoundLoc1  );
-        double var_phi   =cov(Acts::eBoundPhi   , Acts::eBoundPhi   );
-        double var_theta =cov(Acts::eBoundTheta , Acts::eBoundTheta );
-        double var_qoverp=cov(Acts::eBoundQOverP, Acts::eBoundQOverP);
-
-        double var_omega    =
-            var_qoverp*std::pow(omega/(qoverp*1e-3)      , 2) +
-            var_theta *std::pow(omega/std::tan(var_theta), 2);
-        double var_tanlambda=var_theta*std::pow(1/std::cos(theta), 4);
-
-        FloatVec lcioCov(15, 0);
-        lcioCov[ 0]=var_d0;
-        lcioCov[ 2]=var_phi;
-        lcioCov[ 5]=var_omega;
-        lcioCov[ 9]=var_z0;
-        lcioCov[14]=var_tanlambda;
-        // TODO: Add off-diagonals
-
-        trackStateAtIP->setCovMatrix(lcioCov);
+        EVENT::TrackState* trackStateAtIP
+            = ACTSTracking::ACTS2Marlin_trackState(
+                lcio::TrackState::AtIP,
+                params,
+                magneticField()->getField(zeropos)[2]/Acts::UnitConstants::T
+                                                   );
+        track->trackStates().push_back(trackStateAtIP);
 
         //
         // Save results
@@ -502,6 +542,9 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
     }
   }
 
+  // Save the output seed collection
+  evt->addCollection( seedCollection  , _outputSeedCollection  ) ;
+
   // Save the output track collection
   evt->addCollection( trackCollection , _outputTrackCollection ) ;
 
@@ -532,30 +575,5 @@ LCCollection* ACTSSeedingProc::getCollection(const std::string& collectionName, 
   {
     streamlog_out( DEBUG5 ) << "- cannot get collection. Collection " << collectionName << " is unavailable" << std::endl;
     return nullptr;
-  }
-}
-
-int ACTSSeedingProc::getSubdetector(const lcio::TrackerHit* hit)
-{ _encoder->setValue(hit->getCellID0()); return (*_encoder)[lcio::LCTrackerCellID::subdet()]; }
-
-int ACTSSeedingProc::getLayer(const lcio::TrackerHit* hit)
-{ _encoder->setValue(hit->getCellID0()); return (*_encoder)[lcio::LCTrackerCellID::layer ()]; }
-
-void ACTSSeedingProc::removeHitsSameLayer(const std::vector<TrackerHit*> &trackHits, std::vector<TrackerHit*> &trackFilteredHits)
-{
-  trackFilteredHits.push_back(*(trackHits.begin()));
-
-  for(std::vector<TrackerHit*>::const_iterator it = trackHits.begin()+1; it != trackHits.end(); ++it)
-  {
-    int subdet = getSubdetector(*it);
-    int layer = getLayer(*it);
-    if( subdet != getSubdetector(*(it-1)) )
-    {
-      trackFilteredHits.push_back(*it);
-    }
-    else if( layer != getLayer(*(it-1)) )
-    {
-      trackFilteredHits.push_back(*it);
-    }
   }
 }

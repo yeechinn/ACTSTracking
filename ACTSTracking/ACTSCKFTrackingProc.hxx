@@ -47,18 +47,6 @@ class ACTSCKFTrackingProc : public ACTSProcBase
   LCCollection* getCollection(const std::string&, LCEvent*);	
 
  protected:
-	
-  // Encoder
-  std::shared_ptr<UTIL::BitField64> _encoder;
-
-  // Get the subdetector ID from a hit
-  int getSubdetector(const lcio::TrackerHit* hit);
-
-  // Get the layer ID from a hit
-  int getLayer(const lcio::TrackerHit* hit);
-
-  // Remove hits in the same layer of the same subdetector
-  void removeHitsSameLayer(const std::vector<lcio::TrackerHit*> &, std::vector<lcio::TrackerHit*> &);
 
   // Collection names for (in/out)put
   std::vector<std::string> _inputTrackerHitCollections ;

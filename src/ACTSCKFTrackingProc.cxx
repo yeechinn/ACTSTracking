@@ -11,7 +11,6 @@
 #include <UTIL/LCTrackerConf.h>
 
 #include <IMPL/TrackImpl.h>
-#include <IMPL/TrackStateImpl.h>
 #include <IMPL/LCRelationImpl.h>
 
 #include <Acts/EventData/MultiTrajectory.hpp>
@@ -30,6 +29,7 @@
 
 using namespace Acts::UnitLiterals;
 
+#include "Helpers.hxx"
 #include "MeasurementCalibrator.hxx"
 #include "SourceLink.hxx"
 
@@ -79,9 +79,6 @@ void ACTSCKFTrackingProc::init()
   _runNumber = 0 ;
   _eventNumber = 0 ;
   _fitFails = 0;
-
-  //Initialize CellID encoder
-  _encoder = std::make_shared<UTIL::BitField64>(lcio::LCTrackerCellID::encoding_string());
 }
 
 
@@ -219,7 +216,7 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
 
   Acts::PropagatorPlainOptions pOptions;
   pOptions.maxSteps = 10000;
-  
+
   //std::unique_ptr<const Acts::Logger> logger=Acts::getDefaultLogger("TrackFitting", Acts::Logging::Level::VERBOSE);
   TrackFinderOptions ckfOptions
       =TrackFinderOptions(
@@ -272,55 +269,15 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
   
         //
         // AtIP: Overall fit results as fittedParameters
-
-        IMPL::TrackStateImpl* trackStateAtIP = new IMPL::TrackStateImpl();
-        trackStateAtIP->setLocation(lcio::TrackState::AtIP);
-        track->trackStates().push_back(trackStateAtIP);
-
-        // Fill the parameters
         static const Acts::Vector3 zeropos(0,0,0);
 
-        double d0    =params.parameters()[Acts::eBoundLoc0  ];
-        double z0    =params.parameters()[Acts::eBoundLoc1  ];
-        double phi   =params.parameters()[Acts::eBoundPhi   ];
-        double theta =params.parameters()[Acts::eBoundTheta ];
-        double qoverp=params.parameters()[Acts::eBoundQOverP];
-
-        double p=1e3/qoverp;
-        double Bz=magneticField()->getField(zeropos)[2]/Acts::UnitConstants::T;
-        double omega=(0.3*Bz)/(p*std::sin(theta));
-        double tanlambda=std::tan(theta);
-
-        trackStateAtIP->setPhi      (phi);
-        trackStateAtIP->setTanLambda(tanlambda);
-        trackStateAtIP->setOmega    (omega);
-        trackStateAtIP->setD0       (d0);
-        trackStateAtIP->setZ0       (z0);
-
-        // Fill the covariance matrix
-        //d0, phi, omega, z0, tan(lambda)
-        Acts::BoundTrackParameters::CovarianceMatrix cov=params.covariance().value();
-
-        double var_d0    =cov(Acts::eBoundLoc0  , Acts::eBoundLoc0  );
-        double var_z0    =cov(Acts::eBoundLoc1  , Acts::eBoundLoc1  );
-        double var_phi   =cov(Acts::eBoundPhi   , Acts::eBoundPhi   );
-        double var_theta =cov(Acts::eBoundTheta , Acts::eBoundTheta );
-        double var_qoverp=cov(Acts::eBoundQOverP, Acts::eBoundQOverP);
-
-        double var_omega    =
-            var_qoverp*std::pow(omega/(qoverp*1e-3)      , 2) +
-            var_theta *std::pow(omega/std::tan(var_theta), 2);
-        double var_tanlambda=var_theta*std::pow(1/std::cos(theta), 4);
-
-        FloatVec lcioCov(15, 0);
-        lcioCov[ 0]=var_d0;
-        lcioCov[ 2]=var_phi;
-        lcioCov[ 5]=var_omega;
-        lcioCov[ 9]=var_z0;
-        lcioCov[14]=var_tanlambda;
-        // TODO: Add off-diagonals
-
-        trackStateAtIP->setCovMatrix(lcioCov);
+        EVENT::TrackState* trackStateAtIP
+            = ACTSTracking::ACTS2Marlin_trackState(
+                lcio::TrackState::AtIP,
+                params,
+                magneticField()->getField(zeropos)[2]/Acts::UnitConstants::T
+                                                   );
+        track->trackStates().push_back(trackStateAtIP);
 
         //
         // Save results
@@ -359,7 +316,7 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
 
   // Save the output track collection
   evt->addCollection( trackCollection , _outputTrackCollection ) ;
-  
+
   // Increment the event number
   _eventNumber++ ;
 }
@@ -387,30 +344,5 @@ LCCollection* ACTSCKFTrackingProc::getCollection(const std::string& collectionNa
   {
     streamlog_out( DEBUG5 ) << "- cannot get collection. Collection " << collectionName << " is unavailable" << std::endl;
     return nullptr;
-  }
-}
-
-int ACTSCKFTrackingProc::getSubdetector(const lcio::TrackerHit* hit)
-{ _encoder->setValue(hit->getCellID0()); return (*_encoder)[lcio::LCTrackerCellID::subdet()]; }
-
-int ACTSCKFTrackingProc::getLayer(const lcio::TrackerHit* hit)
-{ _encoder->setValue(hit->getCellID0()); return (*_encoder)[lcio::LCTrackerCellID::layer ()]; }
-
-void ACTSCKFTrackingProc::removeHitsSameLayer(const std::vector<TrackerHit*> &trackHits, std::vector<TrackerHit*> &trackFilteredHits)
-{
-  trackFilteredHits.push_back(*(trackHits.begin()));
-
-  for(std::vector<TrackerHit*>::const_iterator it = trackHits.begin()+1; it != trackHits.end(); ++it)
-  {
-    int subdet = getSubdetector(*it);
-    int layer = getLayer(*it);
-    if( subdet != getSubdetector(*(it-1)) )
-    {
-      trackFilteredHits.push_back(*it);
-    }
-    else if( layer != getLayer(*(it-1)) )
-    {
-      trackFilteredHits.push_back(*it);
-    }
   }
 }

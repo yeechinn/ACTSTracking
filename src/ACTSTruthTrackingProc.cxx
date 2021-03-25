@@ -11,7 +11,6 @@
 #include <UTIL/LCTrackerConf.h>
 
 #include <IMPL/TrackImpl.h>
-#include <IMPL/TrackStateImpl.h>
 #include <IMPL/LCRelationImpl.h>
 
 #include <Acts/EventData/MultiTrajectory.hpp>
@@ -26,6 +25,7 @@
 
 using namespace Acts::UnitLiterals;
 
+#include "Helpers.hxx"
 #include "MeasurementCalibrator.hxx"
 #include "SourceLink.hxx"
 
@@ -342,77 +342,63 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
         track->setNdf (trajState.NDF    );
 
         // TODO: Add hits on track
-        
+
         //
         // AtIP: Overall fit results as fittedParameters
-
-        IMPL::TrackStateImpl* trackStateAtIP = new IMPL::TrackStateImpl();
-        trackStateAtIP->setLocation(lcio::TrackState::AtIP);
-        track->trackStates().push_back(trackStateAtIP);
-
-        // Fill the parameters
         static const Acts::Vector3 zeropos(0,0,0);
 
-        double d0    =params.parameters()[Acts::eBoundLoc0  ];
-        double z0    =params.parameters()[Acts::eBoundLoc1  ];
-        double phi   =params.parameters()[Acts::eBoundPhi   ];
-        double theta =params.parameters()[Acts::eBoundTheta ];
-        double qoverp=params.parameters()[Acts::eBoundQOverP];
-        
-        double p=1e3/qoverp;
-        double Bz=magneticField()->getField(zeropos)[2]/Acts::UnitConstants::T;
-        double omega=(0.3*Bz)/(p*std::sin(theta));
-        double tanlambda=std::tan(theta);
-
-        trackStateAtIP->setPhi      (phi);
-        trackStateAtIP->setTanLambda(tanlambda);
-        trackStateAtIP->setOmega    (omega);
-        trackStateAtIP->setD0       (d0);
-        trackStateAtIP->setZ0       (z0);
-
-        // Fill the covariance matrix
-        //d0, phi, omega, z0, tan(lambda)
-        Acts::BoundTrackParameters::CovarianceMatrix cov=params.covariance().value();
-
-        double var_d0    =cov(Acts::eBoundLoc0  , Acts::eBoundLoc0  );
-        double var_z0    =cov(Acts::eBoundLoc1  , Acts::eBoundLoc1  );
-        double var_phi   =cov(Acts::eBoundPhi   , Acts::eBoundPhi   );
-        double var_theta =cov(Acts::eBoundTheta , Acts::eBoundTheta );
-        double var_qoverp=cov(Acts::eBoundQOverP, Acts::eBoundQOverP);
-
-        double var_omega    =
-            var_qoverp*std::pow(omega/(qoverp*1e-3)      , 2) +
-            var_theta *std::pow(omega/std::tan(var_theta), 2);
-        double var_tanlambda=var_theta*std::pow(1/std::cos(theta), 4);
-        
-        FloatVec lcioCov(15, 0);
-        lcioCov[ 0]=var_d0;
-        lcioCov[ 2]=var_phi;
-        lcioCov[ 5]=var_omega;
-        lcioCov[ 9]=var_z0;
-        lcioCov[14]=var_tanlambda;
-        // TODO: Add off-diagonals
-
-        trackStateAtIP->setCovMatrix(lcioCov);
+        EVENT::TrackState* trackStateAtIP
+            = ACTSTracking::ACTS2Marlin_trackState(
+                lcio::TrackState::AtIP,
+                params,
+                magneticField()->getField(zeropos)[2]/Acts::UnitConstants::T
+                                                   );
+        track->trackStates().push_back(trackStateAtIP);
 
         //
         // Other track states
         /** Can be used get track states at different layers
-        fitOutput.fittedStates.visitBackwards(fitOutput.trackTip, [](Acts::MultiTrajectory<ACTSTracking::SourceLink>::ConstTrackStateProxy state)
+        fitOutput.fittedStates.visitBackwards(fitOutput.trackTip, [&](const auto& state)
         {
-          const Acts::TrackStateType& typeFlags = state.typeFlags();
-          if(!typeFlags.test(Acts::TrackStateFlag::MeasurementFlag))
-            return true;
+          std::cout << "Trajectory State " << state.typeFlags() << std::endl;
 
-          const Acts::Surface& surface = state.referenceSurface();
-          
-          const Acts::GeometryIdentifier& geoID = surface.geometryId();
-          std::cout << "volume = " << geoID.volume() << std::endl;
-          std::cout << "layer = " << geoID.layer() << std::endl;
-          std::cout << "sensitive = " << geoID.sensitive() << std::endl;
+          const Acts::GeometryIdentifier& geoID = state.referenceSurface().geometryId();
+          std::cout << "Geometry ID: " << geoID << std::endl;
 
-          const Acts::BoundVector& params=state.smoothed();
-          std::cout << params[Acts::eBoundQOverP] << std::endl;
+          // no truth info with non-measurement state
+          if (state.typeFlags().test(Acts::TrackStateFlag::MeasurementFlag))
+          {
+            // register all particles that generated this hit
+            auto hitIndex = state.uncalibrated().index();
+            std::cout << "Hit Index: " << hitIndex << std::endl;
+            std::cout << "Hit: " << state.calibrated() << std::endl;
+
+            std::cout << "PRINT ME " << geoID
+                      << "\t" << state.calibrated()[Acts::eBoundLoc0] << "\t" << state.calibrated()[Acts::eBoundLoc1]
+                      << "\t" << state.predicted()[Acts::eBoundLoc0] << "\t" << state.predicted()[Acts::eBoundLoc1]
+                      << "\t" << state.smoothed()[Acts::eBoundLoc0] << "\t" << state.smoothed()[Acts::eBoundLoc1]
+                      << std::endl;
+          }
+
+          if (state.hasPredicted())
+          {
+            std::cout << "Predicted parameters" << std::endl;
+            std::cout << state.predicted() << std::endl;
+            std::cout << state.predictedCovariance() << std::endl;
+          }
+          if (state.hasFiltered())
+          {
+            std::cout << "Filtered parameters" << std::endl;
+            std::cout << state.filtered() << std::endl;
+            std::cout << state.filteredCovariance() << std::endl;
+          }
+          if (state.hasSmoothed())
+          {
+            std::cout << "Smoothed parameters" << std::endl;
+            std::cout << state.smoothed() << std::endl;
+            std::cout << state.smoothedCovariance() << std::endl;
+          }
+
           return true;
         });
         */
