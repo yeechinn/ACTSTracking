@@ -237,9 +237,8 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
     // Make container
     //MeasurementContainer track;
     std::vector<ACTSTracking::SourceLink> trackSourceLinks;
-    std::vector<const Acts::Surface*> surfSequence;
     ACTSTracking::MeasurementContainer track;
-    for(const EVENT::TrackerHit* hit : trackFilteredByRHits)
+    for(EVENT::TrackerHit* hit : trackFilteredByRHits)
     {
       // Convert to Acts hit
       const Acts::Surface* surface=findSurface(hit);
@@ -264,14 +263,13 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
       else
       { throw std::runtime_error("Currently only support TrackerHitPlane."); }
 
-      ACTSTracking::SourceLink sourceLink(surface->geometryId(), track.size());
+      ACTSTracking::SourceLink sourceLink(surface->geometryId(), track.size(), hit);
       ACTSTracking::Measurement meas =
           Acts::makeMeasurement(sourceLink, loc, cov, Acts::eBoundLoc0,
                                 Acts::eBoundLoc1);
 
       track.push_back(meas);
       trackSourceLinks.push_back(sourceLink);
-      surfSequence.push_back(surface);
     }
 
     //
@@ -340,6 +338,13 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
             Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, fitOutput.trackTip);
         track->setChi2(trajState.chi2Sum);
         track->setNdf (trajState.NDF    );
+        std::cout << "Trajectory Summary" << std::endl;
+        std::cout << "\tchi2Sum       " << trajState.chi2Sum       << std::endl;
+        std::cout << "\tNDF           " << trajState.NDF           << std::endl;
+        std::cout << "\tnHoles        " << trajState.nHoles        << std::endl;
+        std::cout << "\tnMeasurements " << trajState.nMeasurements << std::endl;
+        std::cout << "\tnOutliers     " << trajState.nOutliers     << std::endl;
+        std::cout << "\tnStates       " << trajState.nStates       << std::endl;
 
         // TODO: Add hits on track
 

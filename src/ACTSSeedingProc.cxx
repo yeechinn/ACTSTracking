@@ -146,7 +146,7 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
   // Make the output track collection
   LCCollectionVec* seedCollection  = new LCCollectionVec( LCIO::TRACK )  ;
   LCCollectionVec* trackCollection = new LCCollectionVec( LCIO::TRACK )  ;
-
+  
   // Enable the track collection to point back to hits
   LCFlagImpl trkFlag(0) ;
   trkFlag.setBit( LCIO::TRBIT_HITS ) ;
@@ -193,7 +193,7 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
       else
       { throw std::runtime_error("Currently only support TrackerHitPlane."); }
 
-      ACTSTracking::SourceLink sourceLink(surface->geometryId(), measurements.size());
+      ACTSTracking::SourceLink sourceLink(surface->geometryId(), measurements.size(), hit);
       ACTSTracking::Measurement meas =
           Acts::makeMeasurement(sourceLink, loc, localCov, Acts::eBoundLoc0,
                                 Acts::eBoundLoc1);
@@ -443,71 +443,23 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
           continue;
         }
 
+        // Helpful debug output
+        Acts::MultiTrajectoryHelpers::TrajectoryState trajState =
+            Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, trackTip);
+        std::cout << "Trajectory Summary" << std::endl;
+        std::cout << "\tchi2Sum       " << trajState.chi2Sum       << std::endl;
+        std::cout << "\tNDF           " << trajState.NDF           << std::endl;
+        std::cout << "\tnHoles        " << trajState.nHoles        << std::endl;
+        std::cout << "\tnMeasurements " << trajState.nMeasurements << std::endl;
+        std::cout << "\tnOutliers     " << trajState.nOutliers     << std::endl;
+        std::cout << "\tnStates       " << trajState.nStates       << std::endl;
+
         const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.at(trackTip);
         streamlog_out(DEBUG) << "Fitted Paramemeters" << std::endl << params << std::endl;
 
-        // Make the track object and relations object
-        IMPL::TrackImpl* track = new IMPL::TrackImpl ;
-        /*
-        fitOutput.fittedStates.visitBackwards(trackTip, [&](const auto& state)
-        {
-          std::cout << "Trajectory State " << state.typeFlags() << std::endl;
+        // Make track object
+        EVENT::Track* track = ACTSTracking::ACTS2Marlin_track(fitOutput, trackTip, magneticField());
 
-          const Acts::GeometryIdentifier& geoID = state.referenceSurface().geometryId();
-          std::cout << "Geometry ID: " << geoID << std::endl;
-
-          // no truth info with non-measurement state
-          if (state.typeFlags().test(Acts::TrackStateFlag::MeasurementFlag))
-          {
-            // register all particles that generated this hit
-            auto hitIndex = state.uncalibrated().index();
-            std::cout << "Hit Index: " << hitIndex << std::endl;
-          }
-
-          if (state.hasPredicted())
-          {
-            std::cout << "Predicted parameters" << std::endl;
-            std::cout << state.predicted() << std::endl;
-            std::cout << state.predictedCovariance() << std::endl;
-          }
-          if (state.hasFiltered())
-          {
-            std::cout << "Filtered parameters" << std::endl;
-            std::cout << state.filtered() << std::endl;
-            std::cout << state.filteredCovariance() << std::endl;
-          }
-          if (state.hasSmoothed())
-          {
-            std::cout << "Smoothed parameters" << std::endl;
-            std::cout << state.smoothed() << std::endl;
-            std::cout << state.smoothedCovariance() << std::endl;
-          }
-
-
-          return true;
-        });
-        */
-
-        Acts::MultiTrajectoryHelpers::TrajectoryState trajState =
-            Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, trackTip);
-        track->setChi2(trajState.chi2Sum);
-        track->setNdf (trajState.NDF    );
-
-        // TODO: Add hits on track
-  
-        //
-        // AtIP: Overall fit results as fittedParameters
-        static const Acts::Vector3 zeropos(0,0,0);
-
-        EVENT::TrackState* trackStateAtIP
-            = ACTSTracking::ACTS2Marlin_trackState(
-                lcio::TrackState::AtIP,
-                params,
-                magneticField()->getField(zeropos)[2]/Acts::UnitConstants::T
-                                                   );
-        track->trackStates().push_back(trackStateAtIP);
-
-        //
         // Save results
         trackCollection->addElement(track);
 

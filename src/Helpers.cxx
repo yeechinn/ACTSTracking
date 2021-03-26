@@ -1,9 +1,55 @@
 #include "Helpers.hxx"
 
 #include <IMPL/TrackStateImpl.h>
+#include <IMPL/TrackImpl.h>
 
 namespace ACTSTracking
 {
+
+EVENT::Track* ACTS2Marlin_track(const Acts::CombinatorialKalmanFilterResult<ACTSTracking::SourceLink>& fitOutput,
+                                std::size_t trackTip,
+                                std::shared_ptr<Acts::MagneticFieldProvider> magneticField)
+{
+  IMPL::TrackImpl* track = new IMPL::TrackImpl ;
+  Acts::MultiTrajectoryHelpers::TrajectoryState trajState =
+      Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, trackTip);
+
+  //
+  // Fit state
+  track->setChi2(trajState.chi2Sum);
+  track->setNdf (trajState.NDF    );
+
+  //
+  // Hits on track
+  fitOutput.fittedStates.visitBackwards(trackTip, [&](const Acts::MultiTrajectory<ACTSTracking::SourceLink>::ConstTrackStateProxy& state)
+  {
+    // No measurement at this state
+    if(!state.typeFlags().test(Acts::TrackStateFlag::MeasurementFlag))
+    { return true; }
+
+    // register all particles that generated this hit
+    track->addHit(state.uncalibrated().lciohit());
+
+    return true;
+  });
+
+  //
+  // Track stats
+
+  // Track state: at IP
+  static const Acts::Vector3 zeropos(0,0,0);
+  const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.at(trackTip);  
+  EVENT::TrackState* trackStateAtIP
+      = ACTSTracking::ACTS2Marlin_trackState(
+          EVENT::TrackState::AtIP,
+          params,
+          magneticField->getField(zeropos)[2]/Acts::UnitConstants::T
+                                             );
+  track->trackStates().push_back(trackStateAtIP);
+
+  return track;
+}
+
 
 EVENT::TrackState* ACTS2Marlin_trackState(int location,
                                           const Acts::BoundTrackParameters& params,

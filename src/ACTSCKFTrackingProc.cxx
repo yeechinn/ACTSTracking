@@ -10,7 +10,6 @@
 #include <UTIL/LCRelationNavigator.h>
 #include <UTIL/LCTrackerConf.h>
 
-#include <IMPL/TrackImpl.h>
 #include <IMPL/LCRelationImpl.h>
 
 #include <Acts/EventData/MultiTrajectory.hpp>
@@ -157,7 +156,7 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
     // Loop over all hits
     for(uint32_t idxHit=0; idxHit<trackerHitCollection->getNumberOfElements(); idxHit++)
     {
-      const EVENT::TrackerHit* hit = static_cast<const EVENT::TrackerHit*>(trackerHitCollection->getElementAt(idxHit));
+      EVENT::TrackerHit* hit = static_cast<EVENT::TrackerHit*>(trackerHitCollection->getElementAt(idxHit));
 
       // Convert to Acts hit
       const Acts::Surface* surface=findSurface(hit);
@@ -182,7 +181,7 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
       else
       { throw std::runtime_error("Currently only support TrackerHitPlane."); }
 
-      ACTSTracking::SourceLink sourceLink(surface->geometryId(), measurements.size());
+      ACTSTracking::SourceLink sourceLink(surface->geometryId(), measurements.size(), hit);
       ACTSTracking::Measurement meas =
           Acts::makeMeasurement(sourceLink, loc, cov, Acts::eBoundLoc0,
                                 Acts::eBoundLoc1);
@@ -254,30 +253,24 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
           continue;
         }
 
+        //
+        // Helpful debug output
         const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.at(trackTip);
         streamlog_out(DEBUG) << "Fitted Paramemeters" << std::endl << params << std::endl;
 
-        // Make the track object and relations object
-        IMPL::TrackImpl* track = new IMPL::TrackImpl ;
-
         Acts::MultiTrajectoryHelpers::TrajectoryState trajState =
             Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, trackTip);
-        track->setChi2(trajState.chi2Sum);
-        track->setNdf (trajState.NDF    );
+        std::cout << "Trajectory Summary" << std::endl;
+        std::cout << "\tchi2Sum       " << trajState.chi2Sum       << std::endl;
+        std::cout << "\tNDF           " << trajState.NDF           << std::endl;
+        std::cout << "\tnHoles        " << trajState.nHoles        << std::endl;
+        std::cout << "\tnMeasurements " << trajState.nMeasurements << std::endl;
+        std::cout << "\tnOutliers     " << trajState.nOutliers     << std::endl;
+        std::cout << "\tnStates       " << trajState.nStates       << std::endl;
 
-        // TODO: Add hits on track
-  
         //
-        // AtIP: Overall fit results as fittedParameters
-        static const Acts::Vector3 zeropos(0,0,0);
-
-        EVENT::TrackState* trackStateAtIP
-            = ACTSTracking::ACTS2Marlin_trackState(
-                lcio::TrackState::AtIP,
-                params,
-                magneticField()->getField(zeropos)[2]/Acts::UnitConstants::T
-                                                   );
-        track->trackStates().push_back(trackStateAtIP);
+        // Make track object
+        EVENT::Track* track = ACTSTracking::ACTS2Marlin_track(fitOutput, trackTip, magneticField());
 
         //
         // Save results

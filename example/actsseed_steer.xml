@@ -37,6 +37,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
 
     <!-- ==========  Output  ========== -->
     <processor name="MergeHits" />
+    <processor name="MyCreateTrackRelations" />
     <processor name="MyLCTuple" />
   </execute>
 
@@ -289,6 +290,11 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <parameter name="OutputCollection" type="string"> HitsCollection </parameter>
   </processor>
 
+  <processor name="MyCreateTrackRelations" type="CreateTrackRelations">
+    <parameter name="TrackCollection" type="string">SeededCKFTracks</parameter>
+    <parameter name="Track2TrackerHitRelationName" type="string">SeededCKFTracks_HitsRelation</parameter>
+  </processor>
+
  <processor name="MyLCTuple" type="LCTuple">
    <!--LCTuple creates a ROOT TTRee with a column wise ntuple from LCIO collections ....-->
 
@@ -300,6 +306,10 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
 
    <!--Name of the Track collection-->
    <parameter name="TrackCollection" type="string" lcioInType="Track">SeededCKFTracks</parameter>
+   
+   <!--Relations-->
+   <parameter name="LCRelationCollections" type="string" lcioInType="LCRelation">SeededCKFTracks_HitsRelation</parameter>
+   <parameter name="LCRelationPrefixes" type="string">tr2th</parameter>
 
    <!--verbosity level of this processor ("DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
    <parameter name="Verbosity" type="string">MESSAGE</parameter>
