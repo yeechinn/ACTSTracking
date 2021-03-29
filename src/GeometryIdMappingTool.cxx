@@ -203,6 +203,8 @@ uint64_t GeometryIdMappingTool::getGeometryID(uint32_t systemID, uint32_t layerI
         break;
 
       case VertexEndCapNegative:
+        sensitive_id = 16-moduleID;
+        break;
       case VertexEndCapPositive:
         sensitive_id = moduleID +1;
         break;
