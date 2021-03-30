@@ -265,16 +265,6 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
       OITrackerEndcapHits
       OTrackerEndcapHits
     </parameter>
-    <parameter name="SimTrackerHitRelCollectionNames" type="StringVec" lcioInType="LCRelation">
-      VXDTrackerHitRelations
-      InnerTrackerBarrelHitsRelations
-      OuterInnerTrackerBarrelHitsRelations
-      OuterTrackerBarrelHitsRelations
-      VXDEndcapTrackerHitRelations
-      InnerTrackerEndcapHitsRelations
-      OuterInnerTrackerEndcapHitsRelations
-      OuterTrackerEndcapHitsRelations
-    </parameter>
     <!--Silicon track Collection Name-->
     <parameter name="TruthTrackCollectionName" type="string" lcioOutType="Track">SeededCKFTracks</parameter>
   </processor>

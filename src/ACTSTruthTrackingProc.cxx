@@ -92,23 +92,6 @@ void ACTSTruthTrackingProc::init()
   _eventNumber = 0 ;
   _fitFails = 0;
 
-  /*
-  // Set up the track fit factory
-  trackFactory =  MarlinTrk::Factory::createMarlinTrkSystem( "DDKalTest" , nullptr , "" ) ;
-  trackFactory->setOption( MarlinTrk::IMarlinTrkSystem::CFG::useQMS,        true) ;
-  trackFactory->setOption( MarlinTrk::IMarlinTrkSystem::CFG::usedEdx,       true) ;
-  trackFactory->setOption( MarlinTrk::IMarlinTrkSystem::CFG::useSmoothing,  false) ;
-  trackFactory->init() ;
-
-  // Put default values for track fitting
-  _initialTrackError_d0 = 1.e6;
-  _initialTrackError_phi0 = 1.e2;
-  _initialTrackError_omega = 1.e-4;
-  _initialTrackError_z0 = 1.e6;
-  _initialTrackError_tanL = 1.e2;
-  _maxChi2perHit = 1.e2;
-  */
-
   //Initialize CellID encoder
   _encoder = std::make_shared<UTIL::BitField64>(lcio::LCTrackerCellID::encoding_string());
 }
@@ -327,17 +310,12 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
       const Acts::KalmanFitterResult<ACTSTracking::SourceLink>& fitOutput = result.value();
       if (fitOutput.fittedParameters)
       {
-        const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.value();
-        streamlog_out(DEBUG) << "Fitted Paramemeters" << std::endl << params << std::endl;
-
         // Make the track object and relations object
         IMPL::LCRelationImpl* relationTrack = new IMPL::LCRelationImpl;
-        IMPL::TrackImpl* track = new IMPL::TrackImpl ;
 
+        // Helpful debug output
         Acts::MultiTrajectoryHelpers::TrajectoryState trajState =
             Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, fitOutput.trackTip);
-        track->setChi2(trajState.chi2Sum);
-        track->setNdf (trajState.NDF    );
         std::cout << "Trajectory Summary" << std::endl;
         std::cout << "\tchi2Sum       " << trajState.chi2Sum       << std::endl;
         std::cout << "\tNDF           " << trajState.NDF           << std::endl;
@@ -346,69 +324,12 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
         std::cout << "\tnOutliers     " << trajState.nOutliers     << std::endl;
         std::cout << "\tnStates       " << trajState.nStates       << std::endl;
 
-        // TODO: Add hits on track
+        const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.value();
+        streamlog_out(DEBUG) << "Fitted Paramemeters" << std::endl << params << std::endl;
 
-        //
-        // AtIP: Overall fit results as fittedParameters
-        static const Acts::Vector3 zeropos(0,0,0);
+        // Make track object
+        EVENT::Track* track = ACTSTracking::ACTS2Marlin_track(fitOutput, magneticField());
 
-        EVENT::TrackState* trackStateAtIP
-            = ACTSTracking::ACTS2Marlin_trackState(
-                lcio::TrackState::AtIP,
-                params,
-                magneticField()->getField(zeropos)[2]/Acts::UnitConstants::T
-                                                   );
-        track->trackStates().push_back(trackStateAtIP);
-
-        //
-        // Other track states
-        /** Can be used get track states at different layers
-        fitOutput.fittedStates.visitBackwards(fitOutput.trackTip, [&](const auto& state)
-        {
-          std::cout << "Trajectory State " << state.typeFlags() << std::endl;
-
-          const Acts::GeometryIdentifier& geoID = state.referenceSurface().geometryId();
-          std::cout << "Geometry ID: " << geoID << std::endl;
-
-          // no truth info with non-measurement state
-          if (state.typeFlags().test(Acts::TrackStateFlag::MeasurementFlag))
-          {
-            // register all particles that generated this hit
-            auto hitIndex = state.uncalibrated().index();
-            std::cout << "Hit Index: " << hitIndex << std::endl;
-            std::cout << "Hit: " << state.calibrated() << std::endl;
-
-            std::cout << "PRINT ME " << geoID
-                      << "\t" << state.calibrated()[Acts::eBoundLoc0] << "\t" << state.calibrated()[Acts::eBoundLoc1]
-                      << "\t" << state.predicted()[Acts::eBoundLoc0] << "\t" << state.predicted()[Acts::eBoundLoc1]
-                      << "\t" << state.smoothed()[Acts::eBoundLoc0] << "\t" << state.smoothed()[Acts::eBoundLoc1]
-                      << std::endl;
-          }
-
-          if (state.hasPredicted())
-          {
-            std::cout << "Predicted parameters" << std::endl;
-            std::cout << state.predicted() << std::endl;
-            std::cout << state.predictedCovariance() << std::endl;
-          }
-          if (state.hasFiltered())
-          {
-            std::cout << "Filtered parameters" << std::endl;
-            std::cout << state.filtered() << std::endl;
-            std::cout << state.filteredCovariance() << std::endl;
-          }
-          if (state.hasSmoothed())
-          {
-            std::cout << "Smoothed parameters" << std::endl;
-            std::cout << state.smoothed() << std::endl;
-            std::cout << state.smoothedCovariance() << std::endl;
-          }
-
-          return true;
-        });
-        */
-
-        //
         // Save results
         trackCollection->addElement(track);
 

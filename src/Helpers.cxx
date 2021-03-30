@@ -50,6 +50,50 @@ EVENT::Track* ACTS2Marlin_track(const Acts::CombinatorialKalmanFilterResult<ACTS
   return track;
 }
 
+EVENT::Track* ACTS2Marlin_track(const Acts::KalmanFitterResult<ACTSTracking::SourceLink>& fitOutput,
+                                std::shared_ptr<Acts::MagneticFieldProvider> magneticField)
+{
+  IMPL::TrackImpl* track = new IMPL::TrackImpl ;
+  Acts::MultiTrajectoryHelpers::TrajectoryState trajState =
+      Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, fitOutput.trackTip);
+
+  //
+  // Fit state
+  track->setChi2(trajState.chi2Sum);
+  track->setNdf (trajState.NDF    );
+
+  //
+  // Hits on track
+  fitOutput.fittedStates.visitBackwards(fitOutput.trackTip, [&](const Acts::MultiTrajectory<ACTSTracking::SourceLink>::ConstTrackStateProxy& state)
+  {
+    // No measurement at this state
+    if(!state.typeFlags().test(Acts::TrackStateFlag::MeasurementFlag))
+    { return true; }
+
+    // register all particles that generated this hit
+    track->addHit(state.uncalibrated().lciohit());
+
+    return true;
+  });
+
+  //
+  // Track stats
+
+  // Track state: at IP
+  static const Acts::Vector3 zeropos(0,0,0);
+  const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.value();
+  EVENT::TrackState* trackStateAtIP
+      = ACTSTracking::ACTS2Marlin_trackState(
+          EVENT::TrackState::AtIP,
+          params,
+          magneticField->getField(zeropos)[2]/Acts::UnitConstants::T
+                                             );
+  track->trackStates().push_back(trackStateAtIP);
+
+  return track;
+}
+
+
 
 EVENT::TrackState* ACTS2Marlin_trackState(int location,
                                           const Acts::BoundTrackParameters& params,
