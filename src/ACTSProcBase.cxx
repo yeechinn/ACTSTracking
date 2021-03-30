@@ -213,7 +213,7 @@ void ACTSProcBase::buildDetector()
       Acts::TGeoLayerBuilder::LayerConfig lConfig;
       lConfig.volumeName = "VertexEndcap*";
       lConfig.sensorNames = {"sensor*"};
-      lConfig.localAxes = "XzY";
+      lConfig.localAxes = "xzy";
 
       // Fill the parsing restrictions in r
       lConfig.parseRanges.push_back({Acts::binR, {0, 120}});
@@ -253,7 +253,7 @@ void ACTSProcBase::buildDetector()
       Acts::TGeoLayerBuilder::LayerConfig lConfig;
       lConfig.volumeName = "VertexEndcap*";
       lConfig.sensorNames = {"sensor*"};
-      lConfig.localAxes = "XzY";
+      lConfig.localAxes = "xzy";
 
       // Fill the parsing restrictions in r
       lConfig.parseRanges.push_back({Acts::binR, {0, 120}});
