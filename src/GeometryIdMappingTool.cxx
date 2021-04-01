@@ -126,8 +126,23 @@ uint64_t GeometryIdMappingTool::getGeometryID(uint32_t systemID, uint32_t layerI
 {
   uint64_t geometry_id = 0;
 
-  // Volume ID is just a direct map of sub detector
-  int32_t signSystemID = (sideID<0)?-systemID:systemID; // endcap is split in +/- sides by ACTS
+  //
+  // Volume ID determination.
+
+  // the outermost layer of InnerTracker is "OuterInnerTracker" in ACTS
+  if(systemID==InnerTrackerBarrel && layerID==2)
+  {
+    systemID=OuterInnerTrackerBarrel;
+  }
+  if(systemID==InnerTrackerEndCapPositive && layerID!=0)
+  {
+    systemID=OuterInnerTrackerEndCapPositive;
+  }
+
+  // endcap is split in +/- sides by ACTS
+  int32_t signSystemID = (sideID<0)?-systemID:systemID;
+
+  // Map
   uint64_t volume_id= (VolumeMap.find(signSystemID)!=VolumeMap.end())?VolumeMap.at(signSystemID):signSystemID;
   geometry_id |= volume_id<<(14*4);
 

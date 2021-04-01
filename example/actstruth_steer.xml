@@ -27,8 +27,6 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <processor name="VXDEndcapDigitiser"/>
     <processor name="InnerPlanarDigiProcessor"/>
     <processor name="InnerEndcapPlanarDigiProcessor"/>
-    <processor name="OuterInnerPlanarDigiProcessor"/>
-    <processor name="OuterInnerEndcapPlanarDigiProcessor"/>
     <processor name="OuterPlanarDigiProcessor"/>
     <processor name="OuterEndcapPlanarDigiProcessor"/>
 
@@ -98,7 +96,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <!--InitializeDD4hep reads a compact xml file and initializes the dd4hep::Detector object-->
     <!--Name of the DD4hep compact xml file to load-->
     <parameter name="DD4hepXMLFile" type="string">
-      ${CMAKE_SOURCE_DIR}/data/MuColl_v1_mod0/MuColl_v1_mod0.xml
+      /opt/ilcsoft/muonc/detector-simulation/geometries/MuColl_v1/MuColl_v1.xml
     </parameter>
     <!--Alternate name for EncodingStringParameterName-->
     <!--If given, the Compact File parameter of that name will be used as argument to LCTrackerCellID::set_encoding_string()-->
@@ -177,38 +175,6 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <parameter name="Verbosity" type="string"> WARNING </parameter>
   </processor>
 
-  <processor name="OuterInnerPlanarDigiProcessor" type="DDPlanarDigiProcessor">
-    <parameter name="SubDetectorName" type="string"> OuterInnerTrackers </parameter>
-    <parameter name="IsStrip" type="bool"> false </parameter>
-    <parameter name="ResolutionU" type="float"> 0.010 </parameter>
-    <parameter name="ResolutionV" type="float"> 0.010 </parameter>
-    <parameter name="SimTrackHitCollectionName" type="string" lcioInType="SimTrackerHit"> OuterInnerTrackerBarrelCollection </parameter>
-    <parameter name="SimTrkHitRelCollection" type="string" lcioOutType="LCRelation"> OuterInnerTrackerBarrelHitsRelations </parameter>
-    <parameter name="TrackerHitCollectionName" type="string" lcioOutType="TrackerHitPlane"> OITrackerHits </parameter>
-    <parameter name="ResolutionT" type="FloatVec"> 0.1  </parameter>
-    <parameter name="UseTimeWindow" type="bool"> true </parameter>
-    <parameter name="CorrectTimesForPropagation" type="bool" value="true"/>
-    <parameter name="TimeWindowMin" type="float"> -0.3 </parameter>
-    <parameter name="TimeWindowMax" type="float"> 0.3 </parameter>
-    <parameter name="Verbosity" type="string"> WARNING </parameter>
-  </processor>
-
-  <processor name="OuterInnerEndcapPlanarDigiProcessor" type="DDPlanarDigiProcessor">
-    <parameter name="SubDetectorName" type="string"> OuterInnerTrackers </parameter>
-    <parameter name="IsStrip" type="bool"> false </parameter>
-    <parameter name="ResolutionU" type="float"> 0.010 </parameter>
-    <parameter name="ResolutionV" type="float"> 0.010 </parameter>
-    <parameter name="SimTrackHitCollectionName" type="string" lcioInType="SimTrackerHit"> OuterInnerTrackerEndcapCollection </parameter>
-    <parameter name="SimTrkHitRelCollection" type="string" lcioOutType="LCRelation"> OuterInnerTrackerEndcapHitsRelations </parameter>
-    <parameter name="TrackerHitCollectionName" type="string" lcioOutType="TrackerHitPlane"> OITrackerEndcapHits </parameter>
-    <parameter name="ResolutionT" type="FloatVec"> 0.1  </parameter>
-    <parameter name="UseTimeWindow" type="bool"> true </parameter>
-    <parameter name="CorrectTimesForPropagation" type="bool" value="true"/>
-    <parameter name="TimeWindowMin" type="float"> -0.3 </parameter>
-    <parameter name="TimeWindowMax" type="float"> 0.3 </parameter>
-    <parameter name="Verbosity" type="string"> WARNING </parameter>
-  </processor>
-
   <processor name="OuterPlanarDigiProcessor" type="DDPlanarDigiProcessor">
     <parameter name="SubDetectorName" type="string"> OuterTrackers </parameter>
     <parameter name="IsStrip" type="bool"> false </parameter>
@@ -258,21 +224,17 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <parameter name="TrackerHitCollectionNames" type="StringVec" lcioInType="TrackerHitPlane">
       VXDTrackerHits
       ITrackerHits
-      OITrackerHits
       OTrackerHits
       VXDEndcapTrackerHits
       ITrackerEndcapHits
-      OITrackerEndcapHits
       OTrackerEndcapHits
     </parameter>
     <parameter name="SimTrackerHitRelCollectionNames" type="StringVec" lcioInType="LCRelation">
       VXDTrackerHitRelations
       InnerTrackerBarrelHitsRelations
-      OuterInnerTrackerBarrelHitsRelations
       OuterTrackerBarrelHitsRelations
       VXDEndcapTrackerHitRelations
       InnerTrackerEndcapHitsRelations
-      OuterInnerTrackerEndcapHitsRelations
       OuterTrackerEndcapHitsRelations
     </parameter>
     <!--Name of the MCParticle input collection-->
@@ -290,7 +252,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
   <!-- ======================================================================================================== -->
 
   <processor name="MergeHits" type="MergeCollections">
-    <parameter name="InputCollections" type="StringVec">VXDTrackerHits VXDEndcapTrackerHits ITrackerHits ITrackerEndcapHits OITrackerHits OITrackerEndcapHits OTrackerHits OTrackerEndcapHits</parameter>
+    <parameter name="InputCollections" type="StringVec">VXDTrackerHits VXDEndcapTrackerHits ITrackerHits ITrackerEndcapHits OTrackerHits OTrackerEndcapHits</parameter>
     <parameter name="OutputCollection" type="string"> HitsCollection </parameter>
   </processor>
 

@@ -365,7 +365,7 @@ void ACTSProcBase::buildDetector()
     { // negative endcap
       // Create the layer config object and fill it
       Acts::TGeoLayerBuilder::LayerConfig lConfig;
-      lConfig.volumeName = "OuterInnerTrackerEndcap*";
+      lConfig.volumeName = "InnerTrackerEndcap*";
       lConfig.sensorNames = {"sensor*"};
       lConfig.localAxes = "XYZ";
 
@@ -385,7 +385,7 @@ void ACTSProcBase::buildDetector()
     { // barrel
       // Create the layer config object and fill it
       Acts::TGeoLayerBuilder::LayerConfig lConfig;
-      lConfig.volumeName = "OuterInnerTrackerBarrel*";
+      lConfig.volumeName = "InnerTrackerBarrel*";
       lConfig.sensorNames = {"sensor*"};
       lConfig.localAxes = "XYZ";
 
@@ -405,7 +405,7 @@ void ACTSProcBase::buildDetector()
     { // positive endcap
       // Create the layer config object and fill it
       Acts::TGeoLayerBuilder::LayerConfig lConfig;
-      lConfig.volumeName = "OuterInnerTrackerEndcap*";
+      lConfig.volumeName = "InnerTrackerEndcap*";
       lConfig.sensorNames = {"sensor*"};
       lConfig.localAxes = "XYZ";
 
