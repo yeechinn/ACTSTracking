@@ -130,23 +130,37 @@ EVENT::TrackState* ACTS2Marlin_trackState(int location,
   // Uncertainties (covariance matrix)
   const Acts::BoundTrackParameters::CovarianceMatrix& cov=params.covariance().value();
 
-  double var_d0    =cov(Acts::eBoundLoc0  , Acts::eBoundLoc0  );
-  double var_z0    =cov(Acts::eBoundLoc1  , Acts::eBoundLoc1  );
-  double var_phi   =cov(Acts::eBoundPhi   , Acts::eBoundPhi   );
-  double var_theta =cov(Acts::eBoundTheta , Acts::eBoundTheta );
-  double var_qoverp=cov(Acts::eBoundQOverP, Acts::eBoundQOverP);
+  Acts::ActsMatrix<6, 6> jac = Acts::ActsMatrix<6, 6>::Zero();
 
-  double var_omega    =
-      var_qoverp*std::pow(omega/(qoverp*1e-3)      , 2) +
-      var_theta *std::pow(omega/std::tan(var_theta), 2);
-  double var_tanlambda=var_theta*std::pow(1/std::cos(theta), 4);
+  jac(0, Acts::eBoundLoc0  ) =1;
+
+  jac(1, Acts::eBoundPhi   ) =1;
+
+  jac(2, Acts::eBoundTheta ) =omega/std::tan(theta);
+  jac(2, Acts::eBoundQOverP) =omega/(qoverp*1e-3);
+
+  jac(3, Acts::eBoundLoc1  ) =1;
+
+  jac(4, Acts::eBoundTheta ) =std::pow(1/std::cos(theta), 2);
+  
+  Acts::ActsMatrix<6,6> trcov=(jac * cov * jac.transpose());
 
   EVENT::FloatVec lcioCov(15, 0);
-  lcioCov[ 0]=var_d0;
-  lcioCov[ 2]=var_phi;
-  lcioCov[ 5]=var_omega;
-  lcioCov[ 9]=var_z0;
-  lcioCov[14]=var_tanlambda;
+  lcioCov[ 0]=trcov(0,0);
+  lcioCov[ 1]=trcov(0,1);
+  lcioCov[ 2]=trcov(1,1);
+  lcioCov[ 3]=trcov(0,2);
+  lcioCov[ 4]=trcov(1,2);
+  lcioCov[ 5]=trcov(2,2);
+  lcioCov[ 6]=trcov(0,3);
+  lcioCov[ 7]=trcov(1,3);
+  lcioCov[ 8]=trcov(2,3);
+  lcioCov[ 9]=trcov(3,3);
+  lcioCov[10]=trcov(0,4);
+  lcioCov[11]=trcov(1,4);
+  lcioCov[12]=trcov(2,4);
+  lcioCov[13]=trcov(3,4);
+  lcioCov[14]=trcov(4,4);
 
   trackState->setCovMatrix(lcioCov);
 
