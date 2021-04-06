@@ -42,6 +42,7 @@ ADD_LIBRARY(ACTSTracking SHARED
   ./src/ACTSCKFTrackingProc.cxx
   ./src/ACTSSeedingProc.cxx
   ./src/ACTSDuplicateRemoval.cxx
+  ./src/TrackTruthProc.cxx
   ./src/GeometryIdSelector.cxx
   ./src/GeometryIdMappingTool.cxx
   ./src/Helpers.cxx

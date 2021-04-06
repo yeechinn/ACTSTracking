@@ -1,5 +1,6 @@
 #pragma once
 
+#include <EVENT/LCEvent.h>
 #include <EVENT/Track.h>
 #include <EVENT/TrackState.h>
 
@@ -58,4 +59,13 @@ EVENT::Track* ACTS2Marlin_track(const Acts::KalmanFitterResult<ACTSTracking::Sou
 EVENT::TrackState* ACTS2Marlin_trackState(int location,
                                          const Acts::BoundTrackParameters& params,
                                          double Bz);
+
+//! Get collection from `LCEvent` with silent fail
+/**
+ * \param evt event store
+ * \param event collection name
+ *
+ * \return Collection, if found, `nullptr` otherwise
+ */
+EVENT::LCCollection* getCollection(EVENT::LCEvent* evt, const std::string& name);
 }

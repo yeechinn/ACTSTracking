@@ -166,4 +166,21 @@ EVENT::TrackState* ACTS2Marlin_trackState(int location,
 
   return trackState;
 }
+
+EVENT::LCCollection* getCollection(EVENT::LCEvent* evt, const std::string& name)
+{
+  if( name.size() == 0 )
+    return nullptr;
+
+  try
+  {
+    return evt->getCollection( name );
+  }
+  catch(const EVENT::DataNotAvailableException& e)
+  {
+    // TODO: Reenable output
+    //streamlog_out( DEBUG2 ) << "getCollection :  DataNotAvailableException : " << name <<  std::endl ;
+    return nullptr;
+  }
+}
 }
