@@ -194,7 +194,7 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
       particleHits[particle].push_back(hit);
     }
   }
-	
+
   // Now loop over all particles and get the list of hits
   int nParticles = particleCollection->getNumberOfElements();
   for(int itP=0;itP<nParticles;itP++)
@@ -296,7 +296,7 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
     cov(Acts::eBoundPhi   , Acts::eBoundPhi   ) = std::pow(_initialTrackError_phi             ,2);
     cov(Acts::eBoundTheta , Acts::eBoundTheta ) = std::pow(_initialTrackError_lambda          ,2);
     cov(Acts::eBoundQOverP, Acts::eBoundQOverP) = std::pow(_initialTrackError_relP * p /(p*p), 2);
-    
+
     std::shared_ptr<Acts::PerigeeSurface> particleSurface = Acts::Surface::makeShared<Acts::PerigeeSurface>(
         Acts::Vector3(mcParticle->getVertex()));
 
@@ -313,16 +313,17 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
         // Make the track object and relations object
         IMPL::LCRelationImpl* relationTrack = new IMPL::LCRelationImpl;
 
+        //
         // Helpful debug output
         Acts::MultiTrajectoryHelpers::TrajectoryState trajState =
             Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, fitOutput.trackTip);
-        std::cout << "Trajectory Summary" << std::endl;
-        std::cout << "\tchi2Sum       " << trajState.chi2Sum       << std::endl;
-        std::cout << "\tNDF           " << trajState.NDF           << std::endl;
-        std::cout << "\tnHoles        " << trajState.nHoles        << std::endl;
-        std::cout << "\tnMeasurements " << trajState.nMeasurements << std::endl;
-        std::cout << "\tnOutliers     " << trajState.nOutliers     << std::endl;
-        std::cout << "\tnStates       " << trajState.nStates       << std::endl;
+        streamlog_out(DEBUG) << "Trajectory Summary" << std::endl;
+        streamlog_out(DEBUG) << "\tchi2Sum       " << trajState.chi2Sum       << std::endl;
+        streamlog_out(DEBUG) << "\tNDF           " << trajState.NDF           << std::endl;
+        streamlog_out(DEBUG) << "\tnHoles        " << trajState.nHoles        << std::endl;
+        streamlog_out(DEBUG) << "\tnMeasurements " << trajState.nMeasurements << std::endl;
+        streamlog_out(DEBUG) << "\tnOutliers     " << trajState.nOutliers     << std::endl;
+        streamlog_out(DEBUG) << "\tnStates       " << trajState.nStates       << std::endl;
 
         const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.value();
         streamlog_out(DEBUG) << "Fitted Paramemeters" << std::endl << params << std::endl;

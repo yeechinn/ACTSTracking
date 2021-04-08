@@ -255,18 +255,18 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
 
         //
         // Helpful debug output
-        const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.at(trackTip);
-        streamlog_out(DEBUG) << "Fitted Paramemeters" << std::endl << params << std::endl;
-
         Acts::MultiTrajectoryHelpers::TrajectoryState trajState =
             Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, trackTip);
-        std::cout << "Trajectory Summary" << std::endl;
-        std::cout << "\tchi2Sum       " << trajState.chi2Sum       << std::endl;
-        std::cout << "\tNDF           " << trajState.NDF           << std::endl;
-        std::cout << "\tnHoles        " << trajState.nHoles        << std::endl;
-        std::cout << "\tnMeasurements " << trajState.nMeasurements << std::endl;
-        std::cout << "\tnOutliers     " << trajState.nOutliers     << std::endl;
-        std::cout << "\tnStates       " << trajState.nStates       << std::endl;
+        streamlog_out(DEBUG) << "Trajectory Summary" << std::endl;
+        streamlog_out(DEBUG) << "\tchi2Sum       " << trajState.chi2Sum       << std::endl;
+        streamlog_out(DEBUG) << "\tNDF           " << trajState.NDF           << std::endl;
+        streamlog_out(DEBUG) << "\tnHoles        " << trajState.nHoles        << std::endl;
+        streamlog_out(DEBUG) << "\tnMeasurements " << trajState.nMeasurements << std::endl;
+        streamlog_out(DEBUG) << "\tnOutliers     " << trajState.nOutliers     << std::endl;
+        streamlog_out(DEBUG) << "\tnStates       " << trajState.nStates       << std::endl;
+
+        const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.at(trackTip);
+        streamlog_out(DEBUG) << "Fitted Paramemeters" << std::endl << params << std::endl;
 
         //
         // Make track object
@@ -275,29 +275,6 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
         //
         // Save results
         trackCollection->addElement(track);
-
-      // // Can be used get track states at different layers
-      // for(size_t trackTip : fitOutput.trackTips)
-      // {
-      //   std::cout << "trackTip " << trackTip << std::endl;
-      //   fitOutput.fittedStates.visitBackwards(trackTip, [](Acts::MultiTrajectory<ACTSTracking::SourceLink>::ConstTrackStateProxy state)
-      //   {
-      //     const Acts::TrackStateType& typeFlags = state.typeFlags();
-      //     if(!typeFlags.test(Acts::TrackStateFlag::MeasurementFlag))
-      //       return true;
-
-      //     const Acts::Surface& surface = state.referenceSurface();
-
-      //     const Acts::GeometryIdentifier& geoID = surface.geometryId();
-      //     std::cout << "volume = " << geoID.volume() << std::endl;
-      //     std::cout << "layer = " << geoID.layer() << std::endl;
-      //     std::cout << "sensitive = " << geoID.sensitive() << std::endl;
-
-      //     const Acts::BoundVector& params=state.smoothed();
-      //     std::cout << params[Acts::eBoundQOverP] << std::endl;
-      //     return true;
-      //   });
-      // }
       }
     }
     else
