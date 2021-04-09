@@ -120,7 +120,8 @@ void TrackTruthProc::processEvent( LCEvent * evt )
       }
 
       // Increment MC particle counter
-      trackhit2mc[simHit->getMCParticle()]++;
+      if(simHit->getMCParticle()!=nullptr)
+        trackhit2mc[simHit->getMCParticle()]++;
     }
 
     // Update best matches
