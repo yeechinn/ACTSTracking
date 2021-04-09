@@ -32,6 +32,8 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
 
     <!-- ==========  Tracking  ========== -->
     <processor name="MyCKFTracking"/>
+    <processor name="MyTrackDeduper"/>
+    <processor name="MyTrackTruth"/>
 
     <!-- ==========  Output  ========== -->
     <processor name="MergeHits" />
@@ -104,7 +106,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <!--verbosity level of this processor ("DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
     <!--parameter name="Verbosity" type="string">DEBUG </parameter-->
   </processor>
-  
+
   <!-- ======================================================================================================== -->
   <!-- ======================================================================================================== -->
   <!-- == Tracker Digitizer configuration                                                                    == -->
@@ -240,9 +242,12 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <!--Name of the MCParticle input collection-->
     <parameter name="MCParticleCollectionName" type="string" lcioInType="MCParticle">MCParticle </parameter>
     <!--Silicon track Collection Name-->
-    <parameter name="TruthTrackCollectionName" type="string" lcioOutType="Track">TruthTracks</parameter>
-    <!--Silicon track particle relation Collection Name-->
-    <parameter name="TruthTrackRelationCollectionName" type="string" lcioOutType="LCRelation">TruthTrackRelations</parameter>
+    <parameter name="TrackCollectionName" type="string" lcioOutType="Track">Tracks</parameter>
+  </processor>
+
+  <processor name="MyTrackDeduper" type="ACTSDuplicateRemoval">
+    <parameter name="InputTrackCollectionName" type="string" lcioOutType="Track">Tracks</parameter>
+    <parameter name="OutputTrackCollectionName" type="string" lcioOutType="Track">CleanedTracks</parameter>
   </processor>
 
   <!-- ======================================================================================================== -->
@@ -257,8 +262,22 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
   </processor>
 
   <processor name="MyCreateTrackRelations" type="CreateTrackRelations">
-    <parameter name="TrackCollection" type="string">TruthTracks</parameter>
-    <parameter name="Track2TrackerHitRelationName" type="string">TruthTracks_HitsRelation</parameter>
+    <parameter name="TrackCollection" type="string">CleanedTracks</parameter>
+    <parameter name="Track2TrackerHitRelationName" type="string">CleanedTracks_HitsRelation</parameter>
+  </processor>
+
+  <processor name="MyTrackTruth" type="TrackTruthProc">
+    <parameter name="TrackCollection" type="string" lcioInType="Track">CleanedTracks</parameter>
+    <parameter name="MCParticleCollection" type="string" lcioInType="MCParticle">MCParticle</parameter>
+    <parameter name="TrackerHit2SimTrackerHitRelationName" type="StringVec" lcioInType="LCRelation">
+      VXDTrackerHitRelations
+      InnerTrackerBarrelHitsRelations
+      OuterTrackerBarrelHitsRelations
+      VXDEndcapTrackerHitRelations
+      InnerTrackerEndcapHitsRelations
+      OuterTrackerEndcapHitsRelations
+    </parameter>
+    <parameter name="Particle2TrackRelationName" type="string" lcioOutType="LCRelation">MCParticle_CleanedTracks</parameter>
   </processor>
 
  <processor name="MyLCTuple" type="LCTuple">
@@ -271,11 +290,11 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
    <parameter name="TrackerHitCollection" type="string" lcioInType="TrackerHit">HitsCollection</parameter>
 
    <!--Name of the Track collection-->
-   <parameter name="TrackCollection" type="string" lcioInType="Track">TruthTracks</parameter>
+   <parameter name="TrackCollection" type="string" lcioInType="Track">CleanedTracks</parameter>
 
    <!--Relations-->
-   <parameter name="LCRelationCollections" type="string" lcioInType="LCRelation">TruthTrackRelations TruthTracks_HitsRelation</parameter>
-   <parameter name="LCRelationPrefixes" type="string">tr2mc tr2th</parameter>
+   <parameter name="LCRelationCollections" type="string" lcioInType="LCRelation">CleanedTracks_HitsRelation MCParticle_CleanedTracks</parameter>
+   <parameter name="LCRelationPrefixes" type="string">tr2th mc2tr</parameter>
 
    <!--verbosity level of this processor ("DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
    <parameter name="Verbosity" type="string">MESSAGE</parameter>

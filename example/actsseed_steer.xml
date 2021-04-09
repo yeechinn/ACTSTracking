@@ -281,7 +281,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
 
    <!--Name of the Track collection-->
    <parameter name="TrackCollection" type="string" lcioInType="Track">CleanedSeededCKFTracks</parameter>
-   
+
    <!--Relations-->
    <parameter name="LCRelationCollections" type="string" lcioInType="LCRelation">CleanedSeededCKFTracks_HitsRelation MCParticle_CleanedSeededCKFTracks</parameter>
    <parameter name="LCRelationPrefixes" type="string">tr2th mc2tr</parameter>
