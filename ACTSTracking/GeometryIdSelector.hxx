@@ -17,9 +17,7 @@ public:
   //! Type used to indicate mask
   using Mask = Acts::GeometryIdentifier::Value;
   
-  /** Create a mapping tool using the provided encoderString to
-   * interpret cell ID's.
-   */
+  GeometryIdSelector() =default;
   GeometryIdSelector(const std::vector<Acts::GeometryIdentifier>& selection );
 
   //! Determine if geometry belong to any requested geometries

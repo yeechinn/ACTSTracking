@@ -8,6 +8,8 @@
 #include <Acts/Definitions/Units.hpp>
 
 #include "ACTSProcBase.hxx"
+#include "GeometryIdSelector.hxx"
+
 
 /**
  * This code performs a true pattern recognition by looping over all MC particles and adding all hits
@@ -53,6 +55,16 @@ class ACTSSeedingProc : public ACTSProcBase
   std::string _outputSeedCollection ;
   std::string _outputTrackCollection ;
 
+  // Seed finding configuration
+  float _seedFinding_rMax = 150;
+  float _seedFinding_deltaRMin =  5;
+  float _seedFinding_deltaRMax = 80;
+  float _seedFinding_collisionRegion = 75;
+  float _seedFinding_zMax = 600;
+  float _seedFinding_sigmaScattering = 50;
+  float _seedFinding_radLengthPerSeed = 0.1;
+  float _seedFinding_minPt = 500;
+
   // Run and event counters
   uint32_t _eventNumber ;
   uint32_t _runNumber ;
@@ -64,6 +76,10 @@ class ACTSSeedingProc : public ACTSProcBase
   double _initialTrackError_lambda ;
   double _initialTrackError_time   = 100 *Acts::UnitConstants::ns; // No Marlin default
   //double _maxChi2perHit;
+
+  // Seeding configuration
+  std::vector<std::string> _seedingLayers;
+  ACTSTracking::GeometryIdSelector _seedGeometrySelection;
 
   uint32_t _fitFails;		
 };

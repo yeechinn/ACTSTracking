@@ -231,14 +231,6 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
       ITrackerEndcapHits
       OTrackerEndcapHits
     </parameter>
-    <parameter name="SimTrackerHitRelCollectionNames" type="StringVec" lcioInType="LCRelation">
-      VXDTrackerHitRelations
-      InnerTrackerBarrelHitsRelations
-      OuterTrackerBarrelHitsRelations
-      VXDEndcapTrackerHitRelations
-      InnerTrackerEndcapHitsRelations
-      OuterTrackerEndcapHitsRelations
-    </parameter>
     <!--Name of the MCParticle input collection-->
     <parameter name="MCParticleCollectionName" type="string" lcioInType="MCParticle">MCParticle </parameter>
     <!--Silicon track Collection Name-->

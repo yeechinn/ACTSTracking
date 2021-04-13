@@ -35,7 +35,6 @@
 
 using namespace Acts::UnitLiterals;
 
-#include "GeometryIdSelector.hxx"
 #include "Helpers.hxx"
 #include "MeasurementCalibrator.hxx"
 #include "SeedSpacePoint.hxx"
@@ -80,6 +79,51 @@ ACTSSeedingProc::ACTSSeedingProc() : ACTSProcBase("ACTSSeedingProc")
                              _initialTrackError_pos,
                              10_um);
 
+  registerProcessorParameter("SeedingLayers",
+                             "Layers to use for seeding in format \"VolID LayID\", one per line. ID's are ACTS GeometryID's. * can be used to wildcard.",
+                             _seedingLayers,
+                             {"*","*"});
+
+  registerProcessorParameter("SeedFinding_RMax",
+                             "Maximum radius of hits to consider.",
+                             _seedFinding_rMax,
+                             _seedFinding_rMax);
+
+  registerProcessorParameter("SeedFinding_DeltaRMin",
+                             "Minimum dR between hits in a seed.",
+                             _seedFinding_deltaRMin,
+                             _seedFinding_deltaRMin);
+
+  registerProcessorParameter("SeedFinding_DeltaRMax",
+                             "Maximum dR between hits in a seed.",
+                             _seedFinding_deltaRMax,
+                             _seedFinding_deltaRMax);
+
+  registerProcessorParameter("SeedFinding_CollisionRegion",
+                             "Size of the collision region in one direction (assumed symmetric).",
+                             _seedFinding_collisionRegion,
+                             _seedFinding_collisionRegion);
+
+  registerProcessorParameter("SeedFinding_ZMax",
+                             "Maximum z of hits hits to consider.",
+                             _seedFinding_zMax,
+                             _seedFinding_zMax);
+
+  registerProcessorParameter("SeedFinding_RadLengthPerSeed",
+                             "Average radiation length per seed.",
+                             _seedFinding_radLengthPerSeed,
+                             _seedFinding_radLengthPerSeed);
+
+  registerProcessorParameter("SeedFinding_SigmaScattering",
+                             "Number of sigmas to allow in scattering angle.",
+                             _seedFinding_sigmaScattering,
+                             _seedFinding_sigmaScattering);
+
+  registerProcessorParameter("SeedFinding_MinPt",
+                             "Minimum pT of tracks to seed.",
+                             _seedFinding_minPt,
+                             _seedFinding_minPt);
+
   // Input collections - mc particles, tracker hits and the relationships between them
   registerInputCollections( LCIO::TRACKERHITPLANE,
                             "TrackerHitCollectionNames" ,
@@ -109,6 +153,28 @@ void ACTSSeedingProc::init()
   _runNumber = 0 ;
   _eventNumber = 0 ;
   _fitFails = 0;
+
+  // Initialize seeding layers
+  std::vector<std::string> seedingLayers;
+  std::copy_if(_seedingLayers.begin(), _seedingLayers.end(), std::back_inserter(seedingLayers),
+               [](const std::string& s){return !s.empty();} );
+
+  if(seedingLayers.size()%2!=0)
+  { throw std::runtime_error("SeedingLayers needs an even number of entries"); }
+
+  std::vector<Acts::GeometryIdentifier> geoSelection;
+  for(uint32_t i=0; i<seedingLayers.size(); i+=2)
+  {
+    Acts::GeometryIdentifier geoid;
+    if(_seedingLayers[i+0]!="*") //volume
+      geoid=geoid.setVolume(std::stoi(_seedingLayers[i+0]));
+    if(_seedingLayers[i+1]!="*") //layer
+      geoid=geoid.setLayer (std::stoi(_seedingLayers[i+1]));
+
+    geoSelection.push_back(geoid);
+  }
+
+  _seedGeometrySelection=ACTSTracking::GeometryIdSelector(geoSelection);
 }
 
 
@@ -119,28 +185,6 @@ void ACTSSeedingProc::processRunHeader( LCRunHeader* )
 
 void ACTSSeedingProc::processEvent( LCEvent* evt )
 {
-  //
-  // Select layers to use for seeding.
-  // Selecting a volume without an explicit layer selects all
-  // layers within the volume.
-  ACTSTracking::GeometryIdSelector geometrySelection ({
-      // vertex negative endcap
-      Acts::GeometryIdentifier().setVolume(13).setLayer( 4),
-      Acts::GeometryIdentifier().setVolume(13).setLayer( 8),
-      Acts::GeometryIdentifier().setVolume(13).setLayer(12),
-      Acts::GeometryIdentifier().setVolume(13).setLayer(16),
-      // vertex barrel
-      Acts::GeometryIdentifier().setVolume(14).setLayer( 2),
-      Acts::GeometryIdentifier().setVolume(14).setLayer( 6),
-      Acts::GeometryIdentifier().setVolume(14).setLayer(10),
-      Acts::GeometryIdentifier().setVolume(14).setLayer(14),
-      // vertex positive endcap
-      Acts::GeometryIdentifier().setVolume(15).setLayer( 2),
-      Acts::GeometryIdentifier().setVolume(15).setLayer( 6),
-      Acts::GeometryIdentifier().setVolume(15).setLayer(10),
-      Acts::GeometryIdentifier().setVolume(15).setLayer(14)
-    });
-
   //
   // Prepare the output
   // Make the output track collection
@@ -195,15 +239,15 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
 
       ACTSTracking::SourceLink sourceLink(surface->geometryId(), measurements.size(), hit);
       ACTSTracking::Measurement meas =
-          Acts::makeMeasurement(sourceLink, loc, localCov, Acts::eBoundLoc0,
-                                Acts::eBoundLoc1);
+          Acts::makeMeasurement(sourceLink, loc, localCov,
+                                Acts::eBoundLoc0, Acts::eBoundLoc1);
 
       measurements.push_back(meas);
       sourceLinks .push_back(sourceLink);
 
       //
       // Seed selection and conversion to useful coordinates
-      if(geometrySelection.check(surface->geometryId()))
+      if(_seedGeometrySelection.check(surface->geometryId()))
       {
         Acts::RotationMatrix3 rotLocalToGlobal =
             surface->referenceFrame(geometryContext(),
@@ -245,24 +289,66 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
   streamlog_out( DEBUG0 )  << "Created " << spacePoints.size() << " space points" << std::endl;
 
   //
-  // Run the seeding algorithm
+  // Run seeding + tracking algorithms
+  //
 
+  //
+  // Initialize track finder
+  using Updater = Acts::GainMatrixUpdater;
+  using Smoother = Acts::GainMatrixSmoother;
+  using Stepper = Acts::EigenStepper<>;
+  using Navigator = Acts::Navigator;
+  using Propagator = Acts::Propagator<Stepper, Navigator>;
+  using CKF =
+      Acts::CombinatorialKalmanFilter<Propagator, Updater, Smoother>;
+
+  // construct all components for the fitter
+  Stepper stepper(magneticField());
+  Navigator navigator(trackingGeometry());
+  navigator.resolvePassive = false;
+  navigator.resolveMaterial = true;
+  navigator.resolveSensitive = true;
+  Propagator propagator(std::move(stepper), std::move(navigator));
+  CKF trackFinder(std::move(propagator));
+
+  // Set the options
+  Acts::MeasurementSelector::Config measurementSelectorCfg={{Acts::GeometryIdentifier(), {15,10}}};
+
+  Acts::PropagatorPlainOptions pOptions;
+  pOptions.maxSteps = 10000;
+
+  // Construct a perigee surface as the target surface
+  std::shared_ptr<Acts::PerigeeSurface> perigeeSurface = Acts::Surface::makeShared<Acts::PerigeeSurface>(
+      Acts::Vector3{0., 0., 0.});
+
+  //std::unique_ptr<const Acts::Logger> logger=Acts::getDefaultLogger("TrackFitting", Acts::Logging::Level::VERBOSE);
+
+  TrackFinderOptions ckfOptions
+      =TrackFinderOptions(
+          geometryContext(), magneticFieldContext(), calibrationContext(),
+          ACTSTracking::MeasurementCalibrator(std::move(measurements)),
+          Acts::MeasurementSelector(measurementSelectorCfg),
+          //Acts::LoggerWrapper{*logger}, pOptions,
+          Acts::getDummyLogger(), pOptions,
+          &(*perigeeSurface));
+
+  //
   // Finder configuration
   static const Acts::Vector3 zeropos(0,0,0);
 
   Acts::SeedfinderConfig<ACTSTracking::SeedSpacePoint> finderCfg;
-  finderCfg.rMax = 120;
-  finderCfg.deltaRMin =  5;
-  finderCfg.deltaRMax = 30; 
-  finderCfg.collisionRegionMin = -250;
-  finderCfg.collisionRegionMax = 250;
-  finderCfg.zMin = -300;
-  finderCfg.zMax =  300;
+  finderCfg.rMax = _seedFinding_rMax;
+  finderCfg.deltaRMin = _seedFinding_deltaRMin;
+  finderCfg.deltaRMax = _seedFinding_deltaRMax;
+  finderCfg.collisionRegionMin = -_seedFinding_collisionRegion;
+  finderCfg.collisionRegionMax =  _seedFinding_collisionRegion;
+  finderCfg.zMin = -_seedFinding_zMax;
+  finderCfg.zMax =  _seedFinding_zMax;
   finderCfg.maxSeedsPerSpM = 1;
   finderCfg.cotThetaMax = 7.40627;  // 2.7 eta;
-  finderCfg.sigmaScattering = 50;
-  finderCfg.radLengthPerSeed = 0.1;
-  finderCfg.minPt = 500;
+  finderCfg.sigmaScattering = _seedFinding_sigmaScattering;
+  finderCfg.radLengthPerSeed = _seedFinding_radLengthPerSeed;
+  finderCfg.minPt = _seedFinding_minPt;
   finderCfg.bFieldInZ = magneticField()->getField(zeropos)[2]/Acts::UnitConstants::T*1e-3;
   finderCfg.beamPos = {0,0};
   finderCfg.impactMax = 3;
@@ -307,168 +393,136 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
 
   Acts::Seedfinder<ACTSTracking::SeedSpacePoint> finder(finderCfg);
 
-  std::vector<Acts::Seed<ACTSTracking::SeedSpacePoint>> seeds;
   Acts::BinnedSPGroupIterator<ACTSTracking::SeedSpacePoint> group = spacePointsGrouping.begin();
   Acts::BinnedSPGroupIterator<ACTSTracking::SeedSpacePoint> groupEnd = spacePointsGrouping.end();
   for (; !(group == groupEnd); ++group)
   {
-    std::vector<Acts::Seed<ACTSTracking::SeedSpacePoint>> myseeds=finder.createSeedsForGroup(group.bottom(), group.middle(), group.top());
-
-    seeds.insert(seeds.end(), myseeds.begin(), myseeds.end());
-  }
-
-
-  //
-  // Loop over seeds and get track parameters
-  std::vector<Acts::BoundTrackParameters> paramseeds;
-  for(const Acts::Seed<ACTSTracking::SeedSpacePoint>& seed : seeds)
-  {
-    // Get the bottom space point and its reference surface
-    // @todo do we need to sort the sps first
-    const ACTSTracking::SeedSpacePoint* bottomSP = seed.sp().front();
-    const std::size_t hitIdx = bottomSP->measurementIndex();
-    const ACTSTracking::SourceLink& sourceLink = sourceLinks.at(hitIdx);
-    const Acts::GeometryIdentifier& geoId = sourceLink.geometryId();
-
-    const Acts::Surface* surface = trackingGeometry()->findSurface(geoId);
-    if (surface == nullptr) {
-      std::cout << "surface with geoID "
-                << geoId << " is not found in the tracking gemetry";
-      continue;
-    }
-
-    // Get the magnetic field at the bottom space point
-    Acts::Vector3 field = magneticField()->getField(
-        {bottomSP->x(), bottomSP->y(), bottomSP->z()});
-
-    std::optional<Acts::BoundVector> optParams = Acts::estimateTrackParamsFromSeed(
-        geometryContext(), seed.sp().begin(), seed.sp().end(), *surface, field,
-        0.1_T);
-    if (!optParams.has_value())
-    {
-      std::cout << "Failed estimation of track parameters for seed." << std::endl;
-      continue;
-    }
-
-    const Acts::BoundVector& params = optParams.value();
-
-    float charge = std::copysign(1, params[Acts::eBoundQOverP]);
-    float p = std::abs(1/params[Acts::eBoundQOverP]);
-
-    // build the track covariance matrix using the smearing sigmas 
-    Acts::BoundSymMatrix cov = Acts::BoundSymMatrix::Zero();
-    cov(Acts::eBoundLoc0  , Acts::eBoundLoc0  ) = std::pow(_initialTrackError_pos             ,2);
-    cov(Acts::eBoundLoc1  , Acts::eBoundLoc1  ) = std::pow(_initialTrackError_pos             ,2);
-    cov(Acts::eBoundTime  , Acts::eBoundTime  ) = std::pow(_initialTrackError_time            ,2);
-    cov(Acts::eBoundPhi   , Acts::eBoundPhi   ) = std::pow(_initialTrackError_phi             ,2);
-    cov(Acts::eBoundTheta , Acts::eBoundTheta ) = std::pow(_initialTrackError_lambda          ,2);
-    cov(Acts::eBoundQOverP, Acts::eBoundQOverP) = std::pow(_initialTrackError_relP * p /(p*p) ,2);
-
-    Acts::BoundTrackParameters paramseed(surface->getSharedPtr(), params, charge, cov);
-    paramseeds.push_back(paramseed);
+    std::vector<Acts::Seed<ACTSTracking::SeedSpacePoint>> seeds=finder.createSeedsForGroup(group.bottom(), group.middle(), group.top());
 
     //
-    // Add seed to LCIO collection
-    IMPL::TrackImpl* seedtrack = new IMPL::TrackImpl;
-    seedCollection->addElement(seedtrack);
-
-    Acts::Vector3 globalPos = surface->localToGlobal(geometryContext(),
-                                                     {params[Acts::eBoundLoc0], params[Acts::eBoundLoc1]},
-                                                     {0,0,0});
-
-    EVENT::TrackState* seedTrackState
-        = ACTSTracking::ACTS2Marlin_trackState(
-            lcio::TrackState::AtFirstHit,
-            paramseed,
-            magneticField()->getField(globalPos)[2]/Acts::UnitConstants::T
-                                               );
-    seedtrack->trackStates().push_back(seedTrackState);
-
-    streamlog_out(DEBUG) << "Seed Paramemeters" << std::endl << paramseed << std::endl;
-  }
-
-  //
-  // Initialize track finder
-  using Updater = Acts::GainMatrixUpdater;
-  using Smoother = Acts::GainMatrixSmoother;
-  using Stepper = Acts::EigenStepper<>;
-  using Navigator = Acts::Navigator;
-  using Propagator = Acts::Propagator<Stepper, Navigator>;
-  using CKF =
-      Acts::CombinatorialKalmanFilter<Propagator, Updater, Smoother>;
-
-  // construct all components for the fitter
-  Stepper stepper(magneticField());
-  Navigator navigator(trackingGeometry());
-  navigator.resolvePassive = false;
-  navigator.resolveMaterial = true;
-  navigator.resolveSensitive = true;
-  Propagator propagator(std::move(stepper), std::move(navigator));
-  CKF trackFinder(std::move(propagator));
-
-  // Set the options
-  Acts::MeasurementSelector::Config measurementSelectorCfg={{Acts::GeometryIdentifier(), {15,10}}};
-
-  Acts::PropagatorPlainOptions pOptions;
-  pOptions.maxSteps = 10000;
-
-  // Construct a perigee surface as the target surface
-  std::shared_ptr<Acts::PerigeeSurface> perigeeSurface = Acts::Surface::makeShared<Acts::PerigeeSurface>(
-      Acts::Vector3{0., 0., 0.});
-
-  //std::unique_ptr<const Acts::Logger> logger=Acts::getDefaultLogger("TrackFitting", Acts::Logging::Level::VERBOSE);
-
-  TrackFinderOptions ckfOptions
-      =TrackFinderOptions(
-          geometryContext(), magneticFieldContext(), calibrationContext(),
-          ACTSTracking::MeasurementCalibrator(std::move(measurements)),
-          Acts::MeasurementSelector(measurementSelectorCfg),
-          //Acts::LoggerWrapper{*logger}, pOptions,
-          Acts::getDummyLogger(), pOptions,
-          &(*perigeeSurface));
-
-  //
-  // Find the tracks
-  TrackFinderResultContainer results=trackFinder.findTracks(sourceLinks, paramseeds, ckfOptions);
-  for (TrackFinderResult& result : results)
-  {
-    if (result.ok())
+    // Loop over seeds and get track parameters
+    std::vector<Acts::BoundTrackParameters> paramseeds;
+    for(const Acts::Seed<ACTSTracking::SeedSpacePoint>& seed : seeds)
     {
-      const Acts::CombinatorialKalmanFilterResult<ACTSTracking::SourceLink>& fitOutput = result.value();
-      for(const size_t& trackTip : fitOutput.trackTips)
-      {
-        if(fitOutput.fittedParameters.count(trackTip)==0)
-        {
-          streamlog_out(WARNING) << "No fitted track parameters for trajectory with entry index = " << trackTip << std::endl;
-          continue;
-        }
+      // Get the bottom space point and its reference surface
+      // @todo do we need to sort the sps first
+      const ACTSTracking::SeedSpacePoint* bottomSP = seed.sp().front();
+      const std::size_t hitIdx = bottomSP->measurementIndex();
+      const ACTSTracking::SourceLink& sourceLink = sourceLinks.at(hitIdx);
+      const Acts::GeometryIdentifier& geoId = sourceLink.geometryId();
 
-        //
-        // Helpful debug output
-        Acts::MultiTrajectoryHelpers::TrajectoryState trajState =
-            Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, trackTip);
-        streamlog_out(DEBUG) << "Trajectory Summary" << std::endl;
-        streamlog_out(DEBUG) << "\tchi2Sum       " << trajState.chi2Sum       << std::endl;
-        streamlog_out(DEBUG) << "\tNDF           " << trajState.NDF           << std::endl;
-        streamlog_out(DEBUG) << "\tnHoles        " << trajState.nHoles        << std::endl;
-        streamlog_out(DEBUG) << "\tnMeasurements " << trajState.nMeasurements << std::endl;
-        streamlog_out(DEBUG) << "\tnOutliers     " << trajState.nOutliers     << std::endl;
-        streamlog_out(DEBUG) << "\tnStates       " << trajState.nStates       << std::endl;
-
-        const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.at(trackTip);
-        streamlog_out(DEBUG) << "Fitted Paramemeters" << std::endl << params << std::endl;
-
-        // Make track object
-        EVENT::Track* track = ACTSTracking::ACTS2Marlin_track(fitOutput, trackTip, magneticField());
-
-        // Save results
-        trackCollection->addElement(track);
+      const Acts::Surface* surface = trackingGeometry()->findSurface(geoId);
+      if (surface == nullptr) {
+        std::cout << "surface with geoID "
+                  << geoId << " is not found in the tracking gemetry";
+        continue;
       }
+
+      // Get the magnetic field at the bottom space point
+      Acts::Vector3 field = magneticField()->getField(
+          {bottomSP->x(), bottomSP->y(), bottomSP->z()});
+
+      std::optional<Acts::BoundVector> optParams = Acts::estimateTrackParamsFromSeed(
+          geometryContext(), seed.sp().begin(), seed.sp().end(), *surface, field,
+          0.1_T);
+      if (!optParams.has_value())
+      {
+        std::cout << "Failed estimation of track parameters for seed." << std::endl;
+        continue;
+      }
+
+      const Acts::BoundVector& params = optParams.value();
+
+      float charge = std::copysign(1, params[Acts::eBoundQOverP]);
+      float p = std::abs(1/params[Acts::eBoundQOverP]);
+
+      // build the track covariance matrix using the smearing sigmas 
+      Acts::BoundSymMatrix cov = Acts::BoundSymMatrix::Zero();
+      cov(Acts::eBoundLoc0  , Acts::eBoundLoc0  ) = std::pow(_initialTrackError_pos             ,2);
+      cov(Acts::eBoundLoc1  , Acts::eBoundLoc1  ) = std::pow(_initialTrackError_pos             ,2);
+      cov(Acts::eBoundTime  , Acts::eBoundTime  ) = std::pow(_initialTrackError_time            ,2);
+      cov(Acts::eBoundPhi   , Acts::eBoundPhi   ) = std::pow(_initialTrackError_phi             ,2);
+      cov(Acts::eBoundTheta , Acts::eBoundTheta ) = std::pow(_initialTrackError_lambda          ,2);
+      cov(Acts::eBoundQOverP, Acts::eBoundQOverP) = std::pow(_initialTrackError_relP * p /(p*p) ,2);
+
+      Acts::BoundTrackParameters paramseed(surface->getSharedPtr(), params, charge, cov);
+      paramseeds.push_back(paramseed);
+
+      //
+      // Add seed to LCIO collection
+      IMPL::TrackImpl* seedtrack = new IMPL::TrackImpl;
+      seedCollection->addElement(seedtrack);
+
+      Acts::Vector3 globalPos = surface->localToGlobal(geometryContext(),
+                                                       {params[Acts::eBoundLoc0], params[Acts::eBoundLoc1]},
+                                                       {0,0,0});
+
+      // state
+      EVENT::TrackState* seedTrackState
+          = ACTSTracking::ACTS2Marlin_trackState(
+              lcio::TrackState::AtFirstHit,
+              paramseed,
+              magneticField()->getField(globalPos)[2]/Acts::UnitConstants::T
+                                                 );
+
+      // hits
+      for(const ACTSTracking::SeedSpacePoint* sp : seed.sp())
+      {
+        const ACTSTracking::SourceLink& sourceLink = sourceLinks.at(sp->measurementIndex());
+        seedtrack->addHit(sourceLink.lciohit());
+      }
+
+      seedtrack->trackStates().push_back(seedTrackState);
+
+      streamlog_out(DEBUG) << "Seed Paramemeters" << std::endl << paramseed << std::endl;
     }
-    else
+
+    streamlog_out(DEBUG) << "Seeds found: " << std::endl << paramseeds.size() << std::endl;
+
+    //
+    // Find the tracks
+    TrackFinderResultContainer results=trackFinder.findTracks(sourceLinks, paramseeds, ckfOptions);
+
+    for (TrackFinderResult& result : results)
     {
-      streamlog_out(WARNING) << "Track fit error: " << result.error() << std::endl;
-      _fitFails++;
+      if (result.ok())
+      {
+        const Acts::CombinatorialKalmanFilterResult<ACTSTracking::SourceLink>& fitOutput = result.value();
+        for(const size_t& trackTip : fitOutput.trackTips)
+        {
+          if(fitOutput.fittedParameters.count(trackTip)==0)
+          {
+            streamlog_out(WARNING) << "No fitted track parameters for trajectory with entry index = " << trackTip << std::endl;
+            continue;
+          }
+
+          //
+          // Helpful debug output
+          Acts::MultiTrajectoryHelpers::TrajectoryState trajState =
+              Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, trackTip);
+          streamlog_out(DEBUG) << "Trajectory Summary" << std::endl;
+          streamlog_out(DEBUG) << "\tchi2Sum       " << trajState.chi2Sum       << std::endl;
+          streamlog_out(DEBUG) << "\tNDF           " << trajState.NDF           << std::endl;
+          streamlog_out(DEBUG) << "\tnHoles        " << trajState.nHoles        << std::endl;
+          streamlog_out(DEBUG) << "\tnMeasurements " << trajState.nMeasurements << std::endl;
+          streamlog_out(DEBUG) << "\tnOutliers     " << trajState.nOutliers     << std::endl;
+          streamlog_out(DEBUG) << "\tnStates       " << trajState.nStates       << std::endl;
+
+          const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.at(trackTip);
+          streamlog_out(DEBUG) << "Fitted Paramemeters" << std::endl << params << std::endl;
+
+          // Make track object
+          EVENT::Track* track = ACTSTracking::ACTS2Marlin_track(fitOutput, trackTip, magneticField());
+
+          // Save results
+          trackCollection->addElement(track);
+        }
+      }
+      else
+      {
+        streamlog_out(WARNING) << "Track fit error: " << result.error() << std::endl;
+        _fitFails++;
+      }
     }
   }
 
