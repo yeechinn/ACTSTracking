@@ -137,7 +137,7 @@ EVENT::TrackState* ACTS2Marlin_trackState(int location,
   jac(1, Acts::eBoundPhi   ) =1;
 
   jac(2, Acts::eBoundTheta ) =omega/std::tan(theta);
-  jac(2, Acts::eBoundQOverP) =omega/(qoverp*1e-3);
+  jac(2, Acts::eBoundQOverP) =omega/qoverp;
 
   jac(3, Acts::eBoundLoc1  ) =1;
 
