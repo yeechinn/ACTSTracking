@@ -55,52 +55,6 @@ void ACTSDuplicateRemoval::processEvent( LCEvent * evt )
 {
   LCCollection* incol = evt->getCollection(_inputTrackCollection);
 
-  //
-  // Sort tracks into groups of overlapping tracks
-  std::vector<EVENT::TrackVec> trkGroups;
-  for(int i=0; i < incol->getNumberOfElements() ; ++i)
-  {
-    EVENT::Track* myTrk = static_cast<EVENT::Track*>( incol->getElementAt(i) ) ;
-    const TrackerHitVec& myHits=myTrk->getTrackerHits();
-
-    bool inGroup=false;
-    for(EVENT::TrackVec& trkGroup : trkGroups)
-    {
-      for(EVENT::Track* otherTrk : trkGroup)
-      {
-        const TrackerHitVec& otherHits=otherTrk->getTrackerHits();
-
-        uint32_t hitOlap=0;
-        for(const EVENT::TrackerHit* myHit : myHits)
-        {
-          if(std::find(otherHits.begin(), otherHits.end(), myHit)!=otherHits.end())
-          { hitOlap++; }
-        }
-
-        // 50% matching hits means the tracks overlap
-        if(2*hitOlap>myHits.size() || 2*hitOlap>otherHits.size())
-        {
-          inGroup=true;
-
-          // Insert to matched group, better track candidate first
-          EVENT::TrackVec::iterator pos
-              = std::lower_bound(trkGroup.begin(), trkGroup.end(), myTrk, ACTSTracking::track_duplicate_compare);
-          trkGroup.insert(pos, myTrk);
-
-          break;
-        }
-      }
-    }
-
-    // Not added to any existing group, create a new one
-    if(!inGroup)
-    { trkGroups.push_back({myTrk}); }
-  }
-
-  //
-  // Perform overlap removal by the selecting the track with
-  // the most hits and best
-
   // Make the output track collection
   LCCollectionVec* outcol = new LCCollectionVec( LCIO::TRACK )  ;
 
@@ -109,9 +63,54 @@ void ACTSDuplicateRemoval::processEvent( LCEvent * evt )
   trkFlag.setBit( LCIO::TRBIT_HITS ) ;
   outcol->setFlag( trkFlag.getFlag()  ) ;
 
-  // The overlap check..
-  for(const EVENT::TrackVec& trkGroup : trkGroups)
-  { outcol->addElement(trkGroup[0]); }
+  //
+  // Sort tracks by quality (insertion sort)
+  EVENT::TrackVec sortedInput;
+  for(int i=0; i < incol->getNumberOfElements() ; ++i)
+  {
+    EVENT::Track* myTrk = static_cast<EVENT::Track*>( incol->getElementAt(i) ) ;
+
+    EVENT::TrackVec::iterator insertion_point =
+      std::upper_bound(sortedInput.begin(), sortedInput.end(), myTrk, ACTSTracking::track_duplicate_compare);
+
+    sortedInput.insert(insertion_point, myTrk);
+  }
+
+
+  //
+  // Perform overlap removal by checking existing tracks and
+  // adding it only if a matching track (50% shared hits)
+  // is not found.
+
+  for(EVENT::Track* myTrk : sortedInput)
+    {
+      bool addme=true;
+
+      const EVENT::TrackerHitVec& myHits=myTrk->getTrackerHits();
+
+      for(int i=0; i < outcol->getNumberOfElements() ; ++i)
+	{
+	  const EVENT::Track* otherTrk = static_cast<const EVENT::Track*>( outcol->getElementAt(i) ) ;
+	  const EVENT::TrackerHitVec& otherHits=otherTrk->getTrackerHits();
+
+	  // Count overlapping hits
+	  uint32_t hitOlap=0;
+	  for(const EVENT::TrackerHit* myHit : myHits)
+	    {
+	      if(std::find(otherHits.begin(), otherHits.end(), myHit)!=otherHits.end())
+		{ hitOlap++; }
+	    }
+
+	  if(2*hitOlap>myHits.size()) // half my hits belong to superior track
+	    {
+	      addme=false;
+	      break;
+	    }
+	}
+
+      if(addme)
+	{ outcol->addElement(myTrk); }
+    }
 
   // Save the output track collection
   outcol->setTransient( false ) ;
