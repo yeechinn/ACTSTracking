@@ -20,7 +20,30 @@ EVENT::Track* ACTS2Marlin_track(const Acts::CombinatorialKalmanFilterResult<ACTS
   track->setNdf (trajState.NDF    );
 
   //
+  // Track states
+
+  // Track state: at IP
+  static const Acts::Vector3 zeropos(0,0,0);
+  const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.at(trackTip);
+  EVENT::TrackState* trackStateAtIP
+    = ACTSTracking::ACTS2Marlin_trackState(
+					   EVENT::TrackState::AtIP,
+					   params,
+					   magneticField->getField(zeropos)[2]/Acts::UnitConstants::T
+					   );
+  track->trackStates().push_back(trackStateAtIP);
+
+  // Track state: at first hit
+  // placeholder, found when iterating over hits
+  EVENT::TrackState* trackStateAtFirstHit=nullptr;
+
+  // Track state: at last hit
+  // placeholder, found when iterating over hits
+  EVENT::TrackState* trackStateAtLastHit=nullptr;
+
+  //
   // Hits on track
+  EVENT::TrackerHitVec hitsOnTrack;
   fitOutput.fittedStates.visitBackwards(trackTip, [&](const Acts::MultiTrajectory<ACTSTracking::SourceLink>::ConstTrackStateProxy& state)
   {
     // No measurement at this state
@@ -28,24 +51,41 @@ EVENT::Track* ACTS2Marlin_track(const Acts::CombinatorialKalmanFilterResult<ACTS
     { return true; }
 
     // register all particles that generated this hit
-    track->addHit(state.uncalibrated().lciohit());
+    EVENT::TrackerHit *myHit=state.uncalibrated().lciohit();
+    hitsOnTrack.push_back(myHit);
+
+    // Save state at last hit
+    // visiting backwards -> first hit seen
+    if(trackStateAtLastHit==nullptr)
+      {
+	const Acts::Vector3 hitpos(myHit->getPosition()[0],myHit->getPosition()[1],myHit->getPosition()[2]);
+	trackStateAtLastHit
+	  = ACTSTracking::ACTS2Marlin_trackState(
+						 EVENT::TrackState::AtLastHit,
+						 state.smoothed(), state.smoothedCovariance(),
+						 magneticField->getField(hitpos)[2]/Acts::UnitConstants::T
+						 );
+      }
+
+    const Acts::Vector3 hitpos(myHit->getPosition()[0],myHit->getPosition()[1],myHit->getPosition()[2]);
+    trackStateAtFirstHit
+      = ACTSTracking::ACTS2Marlin_trackState(
+					     EVENT::TrackState::AtFirstHit,
+					     state.smoothed(), state.smoothedCovariance(),
+					     magneticField->getField(hitpos)[2]/Acts::UnitConstants::T
+					     );
 
     return true;
   });
 
-  //
-  // Track stats
+  // Reverse hits, above creates them backwards
+  std::reverse(hitsOnTrack.begin(), hitsOnTrack.end());
+  for(EVENT::TrackerHit* hit : hitsOnTrack)
+    { track->addHit(hit); }
 
-  // Track state: at IP
-  static const Acts::Vector3 zeropos(0,0,0);
-  const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.at(trackTip);  
-  EVENT::TrackState* trackStateAtIP
-      = ACTSTracking::ACTS2Marlin_trackState(
-          EVENT::TrackState::AtIP,
-          params,
-          magneticField->getField(zeropos)[2]/Acts::UnitConstants::T
-                                             );
-  track->trackStates().push_back(trackStateAtIP);
+  // Save the track states at hits
+  track->trackStates().push_back(trackStateAtFirstHit);
+  track->trackStates().push_back(trackStateAtLastHit);
 
   return track;
 }
@@ -63,7 +103,30 @@ EVENT::Track* ACTS2Marlin_track(const Acts::KalmanFitterResult<ACTSTracking::Sou
   track->setNdf (trajState.NDF    );
 
   //
+  // Track states
+
+  // Track state: at IP
+  static const Acts::Vector3 zeropos(0,0,0);
+  const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.value();
+  EVENT::TrackState* trackStateAtIP
+    = ACTSTracking::ACTS2Marlin_trackState(
+					   EVENT::TrackState::AtIP,
+					   params,
+					   magneticField->getField(zeropos)[2]/Acts::UnitConstants::T
+					   );
+  track->trackStates().push_back(trackStateAtIP);
+
+  // Track state: at first hit
+  // placeholder, found when iterating over hits
+  EVENT::TrackState* trackStateAtFirstHit=nullptr;
+
+  // Track state: at last hit
+  // placeholder, found when iterating over hits
+  EVENT::TrackState* trackStateAtLastHit=nullptr;
+
+  //
   // Hits on track
+  EVENT::TrackerHitVec hitsOnTrack;
   fitOutput.fittedStates.visitBackwards(fitOutput.trackTip, [&](const Acts::MultiTrajectory<ACTSTracking::SourceLink>::ConstTrackStateProxy& state)
   {
     // No measurement at this state
@@ -71,32 +134,54 @@ EVENT::Track* ACTS2Marlin_track(const Acts::KalmanFitterResult<ACTSTracking::Sou
     { return true; }
 
     // register all particles that generated this hit
-    track->addHit(state.uncalibrated().lciohit());
+    EVENT::TrackerHit *myHit=state.uncalibrated().lciohit();
+    hitsOnTrack.push_back(myHit);
+
+    // Save state at last hit
+    // visiting backwards -> first hit seen
+    if(trackStateAtLastHit==nullptr)
+      {
+	const Acts::Vector3 hitpos(myHit->getPosition()[0],myHit->getPosition()[1],myHit->getPosition()[2]);
+	trackStateAtLastHit
+	  = ACTSTracking::ACTS2Marlin_trackState(
+						 EVENT::TrackState::AtLastHit,
+						 state.smoothed(), state.smoothedCovariance(),
+						 magneticField->getField(hitpos)[2]/Acts::UnitConstants::T
+						 );
+      }
+
+    const Acts::Vector3 hitpos(myHit->getPosition()[0],myHit->getPosition()[1],myHit->getPosition()[2]);
+    trackStateAtFirstHit
+      = ACTSTracking::ACTS2Marlin_trackState(
+					     EVENT::TrackState::AtFirstHit,
+					     state.smoothed(), state.smoothedCovariance(),
+					     magneticField->getField(hitpos)[2]/Acts::UnitConstants::T
+					     );
 
     return true;
   });
 
-  //
-  // Track stats
+  // Reverse hits, above creates them backwards
+  std::reverse(hitsOnTrack.begin(), hitsOnTrack.end());
+  for(EVENT::TrackerHit* hit : hitsOnTrack)
+    { track->addHit(hit); }
 
-  // Track state: at IP
-  static const Acts::Vector3 zeropos(0,0,0);
-  const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.value();
-  EVENT::TrackState* trackStateAtIP
-      = ACTSTracking::ACTS2Marlin_trackState(
-          EVENT::TrackState::AtIP,
-          params,
-          magneticField->getField(zeropos)[2]/Acts::UnitConstants::T
-                                             );
-  track->trackStates().push_back(trackStateAtIP);
+  // Save the track states at hits
+  track->trackStates().push_back(trackStateAtFirstHit);
+  track->trackStates().push_back(trackStateAtLastHit);
 
   return track;
 }
 
-
-
 EVENT::TrackState* ACTS2Marlin_trackState(int location,
                                           const Acts::BoundTrackParameters& params,
+                                          double Bz)
+{
+  return ACTS2Marlin_trackState(location, params.parameters(), params.covariance().value(), Bz);
+}
+
+EVENT::TrackState* ACTS2Marlin_trackState(int location,
+					  const Acts::BoundVector& value, const Acts::BoundMatrix& cov,
                                           double Bz)
 {
   // Create new object
@@ -109,7 +194,6 @@ EVENT::TrackState* ACTS2Marlin_trackState(int location,
   // Trajectory parameters
 
   // Central values
-  const Acts::BoundTrackParameters::ParametersVector& value = params.parameters();
   double d0    =value[Acts::eBoundLoc0  ];
   double z0    =value[Acts::eBoundLoc1  ];
   double phi   =value[Acts::eBoundPhi   ];
@@ -128,8 +212,6 @@ EVENT::TrackState* ACTS2Marlin_trackState(int location,
   trackState->setZ0       (z0);
 
   // Uncertainties (covariance matrix)
-  const Acts::BoundTrackParameters::CovarianceMatrix& cov=params.covariance().value();
-
   Acts::ActsMatrix<6, 6> jac = Acts::ActsMatrix<6, 6>::Zero();
 
   jac(0, Acts::eBoundLoc0  ) =1;

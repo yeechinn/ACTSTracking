@@ -60,6 +60,10 @@ EVENT::TrackState* ACTS2Marlin_trackState(int location,
                                          const Acts::BoundTrackParameters& params,
                                          double Bz);
 
+EVENT::TrackState* ACTS2Marlin_trackState(int location,
+					  const Acts::BoundVector& value, const Acts::BoundMatrix& cov,
+					  double Bz);
+
 //! Get collection from `LCEvent` with silent fail
 /**
  * \param evt event store
