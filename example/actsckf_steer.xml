@@ -36,9 +36,11 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <processor name="MyTrackTruth"/>
 
     <!-- ==========  Output  ========== -->
+    <processor name="MergeSimHits" />
     <processor name="MergeHits" />
+    <processor name="MergeHitsRelations" />
     <processor name="MyCreateTrackRelations" />
-    <processor name="MyLCTuple" />
+    <processor name="MyLCParquet" />
   </execute>
 
 
@@ -248,6 +250,18 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
   <!-- ======================================================================================================== -->
   <!-- ======================================================================================================== -->
 
+  <processor name="MergeSimHits" type="MergeCollections">
+    <parameter name="InputCollections" type="StringVec">
+      VertexBarrelCollection
+      VertexEndcapCollection
+      InnerTrackerBarrelCollection
+      InnerTrackerEndcapCollection
+      OuterTrackerBarrelCollection
+      OuterTrackerEndcapCollection
+    </parameter>
+    <parameter name="OutputCollection" type="string"> SimHitsCollection </parameter>
+  </processor>
+
   <processor name="MergeHits" type="MergeCollections">
     <parameter name="InputCollections" type="StringVec">
       VBTrackerHits
@@ -258,6 +272,18 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
       OETrackerHits
     </parameter>
     <parameter name="OutputCollection" type="string"> HitsCollection </parameter>
+  </processor>
+
+  <processor name="MergeHitsRelations" type="MergeCollections">
+    <parameter name="InputCollections" type="StringVec">
+      VBTrackerHitsRelations
+      IBTrackerHitsRelations
+      OBTrackerHitsRelations
+      VETrackerHitsRelations
+      IETrackerHitsRelations
+      OETrackerHitsRelations
+    </parameter>
+    <parameter name="OutputCollection" type="string"> TrackerHitsRelations </parameter>
   </processor>
 
   <processor name="MyCreateTrackRelations" type="CreateTrackRelations">
@@ -279,24 +305,20 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <parameter name="Particle2TrackRelationName" type="string" lcioOutType="LCRelation">MCParticle_CleanedTracks</parameter>
   </processor>
 
- <processor name="MyLCTuple" type="LCTuple">
-   <!--LCTuple creates a ROOT TTRee with a column wise ntuple from LCIO collections ....-->
-
-   <!--Name of the MCParticle collection-->
-   <parameter name="MCParticleCollection" type="string" lcioInType="MCParticle">MCParticle</parameter>
-
-   <!--Name of the TrackerHit collection-->
-   <parameter name="TrackerHitCollection" type="string" lcioInType="TrackerHit">HitsCollection</parameter>
-
-   <!--Name of the Track collection-->
-   <parameter name="TrackCollection" type="string" lcioInType="Track">CleanedTracks</parameter>
-
+  <processor name="MyLCParquet" type="LCParquet">
+    <!--Location of sample output-->
+    <parameter name="SampleName" type="string">data_actsckf</parameter>
+    <!--Name of the MCParticle collection-->
+    <parameter name="MCParticleCollection" type="string" lcioInType="MCParticle">MCParticle</parameter>
+    <!--Name of the TrackerSimHit collection-->
+    <parameter name="SimTrackerHitCollection" type="string" lcioInType="SimTrackerHit">SimHitsCollection</parameter>
+    <!--Name of the TrackerHit collection-->
+    <parameter name="TrackerHitCollection" type="string" lcioInType="TrackerHit">HitsCollection</parameter>
+    <!--Name of the Track collection-->
+    <parameter name="TrackCollection" type="string" lcioInType="Track">CleanedTracks</parameter>
    <!--Relations-->
-   <parameter name="LCRelationCollections" type="string" lcioInType="LCRelation">CleanedTracks_HitsRelation MCParticle_CleanedTracks</parameter>
-   <parameter name="LCRelationPrefixes" type="string">tr2th mc2tr</parameter>
-
-   <!--verbosity level of this processor ("DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
-   <parameter name="Verbosity" type="string">MESSAGE</parameter>
- </processor>
+   <parameter name="LCRelationCollections" type="string" lcioInType="LCRelation">TrackerHitsRelations CleanedTracks_HitsRelation MCParticle_CleanedTracks</parameter>
+   <parameter name="LCRelationPrefixes" type="string">th2st tr2th mc2tr</parameter> 
+  </processor>
 
 </marlin>
