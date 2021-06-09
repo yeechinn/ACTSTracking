@@ -170,7 +170,6 @@ EVENT::TrackState* ACTS2Marlin_trackState(int location,
   // Trajectory parameters
 
   // Central values
-  const Acts::BoundTrackParameters::ParametersVector& value = params.parameters();
   double z0    =value[Acts::eBoundLoc0  ];
   double d0    =value[Acts::eBoundLoc1  ];
   double phi   =value[Acts::eBoundPhi   ];
