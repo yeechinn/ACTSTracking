@@ -59,6 +59,11 @@ ACTSSeedingProc::ACTSSeedingProc() : ACTSProcBase("ACTSSeedingProc")
   _description = "Build and fit tracks out of all hits associated to an MC particle" ;
 
   // Settings
+  registerProcessorParameter("RunCKF",
+                             "Run tracking using CKF. False means stop at the seeding stage.",
+                             _runCKF,
+                             _runCKF);
+
   registerProcessorParameter("InitialTrackError_RelP",
                              "Track error estimate, momentum component (relative)",
                              _initialTrackError_relP,
@@ -140,9 +145,9 @@ ACTSSeedingProc::ACTSSeedingProc() : ACTSProcBase("ACTSSeedingProc")
 
   registerOutputCollection( LCIO::TRACK,
                             "TrackCollectionName",
-                            "Name of track output collection",
+                            "Name of track output collection.",
                             _outputTrackCollection,
-                            std::string("SeededCKFTracks"));
+                            std::string("Tracks"));
 }
 
 void ACTSSeedingProc::init()
@@ -150,8 +155,6 @@ void ACTSSeedingProc::init()
   ACTSProcBase::init();
 	
   // Reset counters
-  _runNumber = 0 ;
-  _eventNumber = 0 ;
   _fitFails = 0;
 
   // Initialize seeding layers
@@ -179,9 +182,7 @@ void ACTSSeedingProc::init()
 
 
 void ACTSSeedingProc::processRunHeader( LCRunHeader* )
-{
-  _runNumber++ ;
-}
+{ }
 
 void ACTSSeedingProc::processEvent( LCEvent* evt )
 {
@@ -481,7 +482,9 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
 
     //
     // Find the tracks
-    TrackFinderResultContainer results=trackFinder.findTracks(sourceLinks, paramseeds, ckfOptions);
+    TrackFinderResultContainer results;
+    if(_runCKF)
+      results=trackFinder.findTracks(sourceLinks, paramseeds, ckfOptions);
 
     for (TrackFinderResult& result : results)
     {
@@ -531,9 +534,6 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
 
   // Save the output track collection
   evt->addCollection( trackCollection , _outputTrackCollection ) ;
-
-  // Increment the event number
-  _eventNumber++ ;
 }
 
 void ACTSSeedingProc::check( LCEvent* )
@@ -543,11 +543,7 @@ void ACTSSeedingProc::check( LCEvent* )
 
 
 void ACTSSeedingProc::end()
-{
-  streamlog_out(MESSAGE) << " end()  " << name()
-                         << " processed " << _eventNumber << " events in " << _runNumber << " runs "
-                         << std::endl ;
-}
+{ }
 
 LCCollection* ACTSSeedingProc::getCollection(const std::string& collectionName, LCEvent* evt)
 {

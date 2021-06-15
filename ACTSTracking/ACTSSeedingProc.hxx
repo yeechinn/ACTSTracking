@@ -55,6 +55,9 @@ class ACTSSeedingProc : public ACTSProcBase
   std::string _outputSeedCollection ;
   std::string _outputTrackCollection ;
 
+  // Run settings
+  bool _runCKF=true;
+
   // Seed finding configuration
   float _seedFinding_rMax = 150;
   float _seedFinding_deltaRMin =  5;
@@ -64,10 +67,6 @@ class ACTSSeedingProc : public ACTSProcBase
   float _seedFinding_sigmaScattering = 50;
   float _seedFinding_radLengthPerSeed = 0.1;
   float _seedFinding_minPt = 500;
-
-  // Run and event counters
-  uint32_t _eventNumber ;
-  uint32_t _runNumber ;
 
   // Track fit parameters
   double _initialTrackError_pos    ;
