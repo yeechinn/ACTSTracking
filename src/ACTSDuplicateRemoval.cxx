@@ -28,10 +28,10 @@ ACTSDuplicateRemoval::ACTSDuplicateRemoval()
 {
   // Input collections - tracks and relations
   registerInputCollection( LCIO::TRACK,
-                            "InputTrackCollectionName",
-                            "Name of track input collection",
-                            _inputTrackCollection,
-                            std::string("TruthTracks"));
+			   "InputTrackCollectionName",
+			   "Name of track input collection",
+			   _inputTrackCollection,
+			   std::string("TruthTracks"));
 
   // Output collections - tracks and relations
   registerOutputCollection( LCIO::TRACK,

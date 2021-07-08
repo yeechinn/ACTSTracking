@@ -104,6 +104,13 @@ void ACTSTruthTrackingProc::processRunHeader( LCRunHeader* )
 
 void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
 {
+  //
+  // Caches
+  Acts::MagneticFieldContext magFieldContext = Acts::MagneticFieldContext();
+  Acts::MagneticFieldProvider::Cache magCache = magneticField()->makeCache(magFieldContext);
+
+  //
+  // Initialize track finder
   using Updater = Acts::GainMatrixUpdater;
   using Smoother = Acts::GainMatrixSmoother;
   using Stepper = Acts::EigenStepper<>;
@@ -111,12 +118,15 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
   using Propagator = Acts::Propagator<Stepper, Navigator>;
   using Fitter = Acts::KalmanFitter<Propagator, Updater, Smoother>;
 
+  // Configurations
+  Navigator::Config navigatorCfg{trackingGeometry()};
+  navigatorCfg.resolvePassive   = false;
+  navigatorCfg.resolveMaterial  = true;
+  navigatorCfg.resolveSensitive = true;
+
   // construct all components for the fitter
   Stepper stepper(magneticField());
-  Navigator navigator(trackingGeometry());
-  navigator.resolvePassive = false;
-  navigator.resolveMaterial = true;
-  navigator.resolveSensitive = true;
+  Navigator navigator(navigatorCfg);
   Propagator propagator(std::move(stepper), std::move(navigator));
   Fitter trackFitter(std::move(propagator));
 
@@ -316,7 +326,7 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
         //
         // Helpful debug output
         Acts::MultiTrajectoryHelpers::TrajectoryState trajState =
-            Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, fitOutput.trackTip);
+            Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, fitOutput.lastMeasurementIndex);
         streamlog_out(DEBUG) << "Trajectory Summary" << std::endl;
         streamlog_out(DEBUG) << "\tchi2Sum       " << trajState.chi2Sum       << std::endl;
         streamlog_out(DEBUG) << "\tNDF           " << trajState.NDF           << std::endl;
@@ -329,7 +339,7 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
         streamlog_out(DEBUG) << "Fitted Paramemeters" << std::endl << params << std::endl;
 
         // Make track object
-        EVENT::Track* track = ACTSTracking::ACTS2Marlin_track(fitOutput, magneticField());
+        EVENT::Track* track = ACTSTracking::ACTS2Marlin_track(fitOutput, magneticField(), magCache);
 
         // Save results
         trackCollection->addElement(track);

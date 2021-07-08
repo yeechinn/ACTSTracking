@@ -33,7 +33,8 @@ using namespace Acts::UnitLiterals;
 #include "SourceLink.hxx"
 
 using TrackFinderOptions =
-    Acts::CombinatorialKalmanFilterOptions<ACTSTracking::MeasurementCalibrator,
+    Acts::CombinatorialKalmanFilterOptions<ACTSTracking::SourceLinkAccessor,
+					   ACTSTracking::MeasurementCalibrator,
                                            Acts::MeasurementSelector>;
 
 using TrackFinderResult =
@@ -142,28 +143,49 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
   }
 
   //
-  // Make a list of measurements
-  std::vector<ACTSTracking::SourceLink> sourceLinks;
-  ACTSTracking::MeasurementContainer measurements;
+  // Prepare input hits in ACTS format
 
-  // Loop over each hit collections and get the data
+  // Loop over each hit collections and get a single vector with hits
+  // from all of the subdetectors. Also include the Acts GeoId in
+  // the vector. It will be important for the sort to speed up the
+  // population of the final SourceLink multiset.
+  std::vector<std::pair<Acts::GeometryIdentifier, EVENT::TrackerHit*>> sortedHits;
   for(const std::string& collection : _inputTrackerHitCollections)
   {
     // Get the collection of tracker hits
     LCCollection* trackerHitCollection = getCollection(collection, evt);
     if(trackerHitCollection == nullptr) continue;
 
-    // Loop over all hits
     for(uint32_t idxHit=0; idxHit<trackerHitCollection->getNumberOfElements(); idxHit++)
+      {
+	EVENT::TrackerHit* hit = static_cast<EVENT::TrackerHit*>(trackerHitCollection->getElementAt(idxHit));
+
+	sortedHits.push_back(std::make_pair(geoIDMappingTool()->getGeometryID(hit), hit));
+      }
+  }
+
+  // Sort by GeoID
+  std::sort(sortedHits.begin(), sortedHits.end(),
+	    [](const std::pair<Acts::GeometryIdentifier,EVENT::TrackerHit*>& hit0,
+	       const std::pair<Acts::GeometryIdentifier,EVENT::TrackerHit*>& hit1)->bool {
+	      return hit0.first<hit1.first;
+	    });
+
+  // Turn the LCIO TrackerHit's into Acts objects
+  // Assuems that the hits are ssorted by the GeoID
+  ACTSTracking::SourceLinkContainer sourceLinks;
+  ACTSTracking::MeasurementContainer measurements;
+
+  sourceLinks.reserve(sortedHits.size());
+  for(std::pair<Acts::GeometryIdentifier, EVENT::TrackerHit*>& hit : sortedHits)
     {
-      EVENT::TrackerHit* hit = static_cast<EVENT::TrackerHit*>(trackerHitCollection->getElementAt(idxHit));
-
       // Convert to Acts hit
-      const Acts::Surface* surface=findSurface(hit);
+      const Acts::Surface* surface=trackingGeometry()->findSurface(hit.first);
 
-      const double* globalpos=hit->getPosition();
+      const double* lcioglobalpos = hit.second->getPosition();
+      Acts::Vector3 globalPos={lcioglobalpos[0], lcioglobalpos[1], lcioglobalpos[2]};
       Acts::Result<Acts::Vector2> lpResult = surface->globalToLocal(geometryContext(),
-                                                                    {globalpos[0], globalpos[1], globalpos[2]},
+                                                                    globalPos,
                                                                     {0,0,0},
                                                                     0.5_um);
       if(!lpResult.ok())
@@ -171,25 +193,29 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
 
       Acts::Vector2 loc = lpResult.value();
 
-      Acts::SymMatrix2 cov = Acts::SymMatrix2::Zero();
-      const EVENT::TrackerHitPlane* hitplane=dynamic_cast<const EVENT::TrackerHitPlane*>(hit);
+      Acts::SymMatrix2 localCov = Acts::SymMatrix2::Zero();
+      const EVENT::TrackerHitPlane* hitplane=dynamic_cast<const EVENT::TrackerHitPlane*>(hit.second);
       if(hitplane)
       {
-        cov(0, 0) = std::pow(hitplane->getdU()*Acts::UnitConstants::mm, 2);
-        cov(1, 1) = std::pow(hitplane->getdV()*Acts::UnitConstants::mm, 2);
+        localCov(0, 0) = std::pow(hitplane->getdU()*Acts::UnitConstants::mm, 2);
+        localCov(1, 1) = std::pow(hitplane->getdV()*Acts::UnitConstants::mm, 2);
       }
       else
       { throw std::runtime_error("Currently only support TrackerHitPlane."); }
 
-      ACTSTracking::SourceLink sourceLink(surface->geometryId(), measurements.size(), hit);
+      ACTSTracking::SourceLink sourceLink(surface->geometryId(), measurements.size(), hit.second);
       ACTSTracking::Measurement meas =
-          Acts::makeMeasurement(sourceLink, loc, cov, Acts::eBoundLoc0,
-                                Acts::eBoundLoc1);
+          Acts::makeMeasurement(sourceLink, loc, localCov,
+                                Acts::eBoundLoc0, Acts::eBoundLoc1);
 
       measurements.push_back(meas);
-      sourceLinks .push_back(sourceLink);
+      sourceLinks .emplace_hint(sourceLinks.end(), sourceLink);
     }
-  }
+
+  //
+  // Caches
+  Acts::MagneticFieldContext magFieldContext = Acts::MagneticFieldContext();
+  Acts::MagneticFieldProvider::Cache magCache = magneticField()->makeCache(magFieldContext);
 
   //
   // Initialize track finder
@@ -201,12 +227,15 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
   using CKF =
       Acts::CombinatorialKalmanFilter<Propagator, Updater, Smoother>;
 
+  // Configurations
+  Navigator::Config navigatorCfg{trackingGeometry()};
+  navigatorCfg.resolvePassive   = false;
+  navigatorCfg.resolveMaterial  = true;
+  navigatorCfg.resolveSensitive = true;
+
   // construct all components for the fitter
   Stepper stepper(magneticField());
-  Navigator navigator(trackingGeometry());
-  navigator.resolvePassive = false;
-  navigator.resolveMaterial = true;
-  navigator.resolveSensitive = true;
+  Navigator navigator(navigatorCfg);
   Propagator propagator(std::move(stepper), std::move(navigator));
   CKF trackFinder(std::move(propagator));
 
@@ -220,7 +249,7 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
   TrackFinderOptions ckfOptions
       =TrackFinderOptions(
           geometryContext(), magneticFieldContext(), calibrationContext(),
-          ACTSTracking::MeasurementCalibrator(std::move(measurements)),
+          ACTSTracking::SourceLinkAccessor(),ACTSTracking::MeasurementCalibrator(std::move(measurements)),
           Acts::MeasurementSelector(measurementSelectorCfg),
           //Acts::LoggerWrapper{*logger}, pOptions,
           Acts::getDummyLogger(), pOptions,
@@ -239,13 +268,17 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
 
   //
   // Find the tracks
+  auto t1 = std::chrono::high_resolution_clock::now();
   TrackFinderResultContainer results=trackFinder.findTracks(sourceLinks, seeds, ckfOptions);
+  auto t2 = std::chrono::high_resolution_clock::now();
+  std::cout << "Tracking finding: " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " ms" << std::endl;
+
   for (TrackFinderResult& result : results)
   {
     if (result.ok())
     {
       const Acts::CombinatorialKalmanFilterResult<ACTSTracking::SourceLink>& fitOutput = result.value();
-      for(const size_t& trackTip : fitOutput.trackTips)
+      for(const size_t& trackTip : fitOutput.lastMeasurementIndices)
       {
         if(fitOutput.fittedParameters.count(trackTip)==0)
         {
@@ -270,7 +303,7 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
 
         //
         // Make track object
-        EVENT::Track* track = ACTSTracking::ACTS2Marlin_track(fitOutput, trackTip, magneticField());
+        EVENT::Track* track = ACTSTracking::ACTS2Marlin_track(fitOutput, trackTip, magneticField(), magCache);
 
         //
         // Save results
