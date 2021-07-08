@@ -42,14 +42,15 @@ using namespace Acts::UnitLiterals;
 
 // Track fitting definitions
 using TrackFinderOptions =
-    Acts::CombinatorialKalmanFilterOptions<ACTSTracking::MeasurementCalibrator,
-                                           Acts::MeasurementSelector>;
+  Acts::CombinatorialKalmanFilterOptions<ACTSTracking::SourceLinkAccessor,
+					 ACTSTracking::MeasurementCalibrator,
+					 Acts::MeasurementSelector>;
 
 using TrackFinderResult =
-    Acts::Result<Acts::CombinatorialKalmanFilterResult<ACTSTracking::SourceLink>>;
+  Acts::Result<Acts::CombinatorialKalmanFilterResult<ACTSTracking::SourceLink>>;
 
 using TrackFinderResultContainer =
-    std::vector<TrackFinderResult>;
+  std::vector<TrackFinderResult>;
 
 ACTSSeedingProc aACTSSeedingProc;
 
@@ -59,6 +60,11 @@ ACTSSeedingProc::ACTSSeedingProc() : ACTSProcBase("ACTSSeedingProc")
   _description = "Build and fit tracks out of all hits associated to an MC particle" ;
 
   // Settings
+  registerProcessorParameter("RunCKF",
+                             "Run tracking using CKF. False means stop at the seeding stage.",
+                             _runCKF,
+                             _runCKF);
+
   registerProcessorParameter("InitialTrackError_RelP",
                              "Track error estimate, momentum component (relative)",
                              _initialTrackError_relP,
@@ -140,9 +146,9 @@ ACTSSeedingProc::ACTSSeedingProc() : ACTSProcBase("ACTSSeedingProc")
 
   registerOutputCollection( LCIO::TRACK,
                             "TrackCollectionName",
-                            "Name of track output collection",
+                            "Name of track output collection.",
                             _outputTrackCollection,
-                            std::string("SeededCKFTracks"));
+                            std::string("Tracks"));
 }
 
 void ACTSSeedingProc::init()
@@ -150,8 +156,6 @@ void ACTSSeedingProc::init()
   ACTSProcBase::init();
 	
   // Reset counters
-  _runNumber = 0 ;
-  _eventNumber = 0 ;
   _fitFails = 0;
 
   // Initialize seeding layers
@@ -179,9 +183,7 @@ void ACTSSeedingProc::init()
 
 
 void ACTSSeedingProc::processRunHeader( LCRunHeader* )
-{
-  _runNumber++ ;
-}
+{ }
 
 void ACTSSeedingProc::processEvent( LCEvent* evt )
 {
@@ -198,91 +200,106 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
 
   //
   // Prepare input hits in ACTS format
+
+  // Loop over each hit collections and get a single vector with hits
+  // from all of the subdetectors. Also include the Acts GeoId in
+  // the vector. It will be important for the sort to speed up the
+  // population of the final SourceLink multiset.
+  std::vector<std::pair<Acts::GeometryIdentifier, EVENT::TrackerHit*>> sortedHits;
+  for(const std::string& collection : _inputTrackerHitCollections) {
+    // Get the collection of tracker hits
+    LCCollection* trackerHitCollection = getCollection(collection, evt);
+    if(trackerHitCollection == nullptr) continue;
+
+    for(uint32_t idxHit=0; idxHit<trackerHitCollection->getNumberOfElements(); idxHit++) {
+      EVENT::TrackerHit* hit = static_cast<EVENT::TrackerHit*>(trackerHitCollection->getElementAt(idxHit));
+
+      sortedHits.push_back(std::make_pair(geoIDMappingTool()->getGeometryID(hit), hit));
+    }
+  }
+
+  // Sort by GeoID
+  std::sort(sortedHits.begin(), sortedHits.end(),
+	    [](const std::pair<Acts::GeometryIdentifier,EVENT::TrackerHit*>& hit0,
+	       const std::pair<Acts::GeometryIdentifier,EVENT::TrackerHit*>& hit1)->bool {
+	      return hit0.first<hit1.first;
+	    });
+
+  // Turn the LCIO TrackerHit's into Acts objects
+  // Assuems that the hits are ssorted by the GeoID
   ACTSTracking::SourceLinkContainer sourceLinks;
   ACTSTracking::MeasurementContainer measurements;
   ACTSTracking::SeedSpacePointContainer spacePoints;
 
-  for(unsigned int collection=0; collection<_inputTrackerHitCollections.size(); collection++)
-  {
-    // Get the collection of tracker hits
-    LCCollection* trackerHitCollection = getCollection(_inputTrackerHitCollections[collection], evt);
-    if(trackerHitCollection == nullptr) continue;
+  sourceLinks.reserve(sortedHits.size());
+  for(std::pair<Acts::GeometryIdentifier, EVENT::TrackerHit*>& hit : sortedHits) {
+    // Convert to Acts hit
+    const Acts::Surface* surface=trackingGeometry()->findSurface(hit.first);
 
-    for(int itHit=0;itHit<trackerHitCollection->getNumberOfElements();itHit++)
-    {
-      // Get the hit
-      TrackerHitPlane* hit = dynamic_cast<TrackerHitPlane*>( trackerHitCollection->getElementAt(itHit) ) ;
+    const double* lcioglobalpos = hit.second->getPosition();
+    Acts::Vector3 globalPos={lcioglobalpos[0], lcioglobalpos[1], lcioglobalpos[2]};
+    Acts::Result<Acts::Vector2> lpResult = surface->globalToLocal(geometryContext(),
+								  globalPos,
+								  {0,0,0},
+								  0.5_um);
+    if(!lpResult.ok())
+      throw std::runtime_error("Global to local transformation did not succeed.");
 
-      // Convert to Acts hit
-      const Acts::Surface* surface=findSurface(hit);
+    Acts::Vector2 loc = lpResult.value();
 
-      const double* lcioglobalpos = hit->getPosition();
-      Acts::Vector3 globalPos={lcioglobalpos[0], lcioglobalpos[1], lcioglobalpos[2]};
-      Acts::Result<Acts::Vector2> lpResult = surface->globalToLocal(geometryContext(),
-                                                                    globalPos,
-                                                                    {0,0,0},
-                                                                    0.5_um);
-      if(!lpResult.ok())
-        throw std::runtime_error("Global to local transformation did not succeed.");
+    Acts::SymMatrix2 localCov = Acts::SymMatrix2::Zero();
+    const EVENT::TrackerHitPlane* hitplane=dynamic_cast<const EVENT::TrackerHitPlane*>(hit.second);
+    if(hitplane) {
+      localCov(0, 0) = std::pow(hitplane->getdU()*Acts::UnitConstants::mm, 2);
+      localCov(1, 1) = std::pow(hitplane->getdV()*Acts::UnitConstants::mm, 2);
+    } else {
+      throw std::runtime_error("Currently only support TrackerHitPlane.");
+    }
 
-      Acts::Vector2 loc = lpResult.value();
+    ACTSTracking::SourceLink sourceLink(surface->geometryId(), measurements.size(), hit.second);
+    ACTSTracking::Measurement meas =
+      Acts::makeMeasurement(sourceLink, loc, localCov,
+			    Acts::eBoundLoc0, Acts::eBoundLoc1);
 
-      Acts::SymMatrix2 localCov = Acts::SymMatrix2::Zero();
-      const EVENT::TrackerHitPlane* hitplane=dynamic_cast<const EVENT::TrackerHitPlane*>(hit);
-      if(hitplane)
-      {
-        localCov(0, 0) = std::pow(hitplane->getdU()*Acts::UnitConstants::mm, 2);
-        localCov(1, 1) = std::pow(hitplane->getdV()*Acts::UnitConstants::mm, 2);
-      }
-      else
-      { throw std::runtime_error("Currently only support TrackerHitPlane."); }
+    measurements.push_back(meas);
+    sourceLinks .emplace_hint(sourceLinks.end(), sourceLink);
 
-      ACTSTracking::SourceLink sourceLink(surface->geometryId(), measurements.size(), hit);
-      ACTSTracking::Measurement meas =
-          Acts::makeMeasurement(sourceLink, loc, localCov,
-                                Acts::eBoundLoc0, Acts::eBoundLoc1);
+    //
+    // Seed selection and conversion to useful coordinates
+    if(_seedGeometrySelection.check(surface->geometryId())) {
+      Acts::RotationMatrix3 rotLocalToGlobal =
+	surface->referenceFrame(geometryContext(),
+				globalPos,
+				{0,0,0});
 
-      measurements.push_back(meas);
-      sourceLinks .push_back(sourceLink);
-
+      // Convert to a seed space point
+      // the space point requires only the variance of the transverse and
+      // longitudinal position. reduce computations by transforming the
+      // covariance directly from local to rho/z.
       //
-      // Seed selection and conversion to useful coordinates
-      if(_seedGeometrySelection.check(surface->geometryId()))
-      {
-        Acts::RotationMatrix3 rotLocalToGlobal =
-            surface->referenceFrame(geometryContext(),
-                                    globalPos,
-                                    {0,0,0});
+      // compute Jacobian from global coordinates to rho/z
+      //
+      //         rho = sqrt(x² + y²)
+      // drho/d{x,y} = (1 / sqrt(x² + y²)) * 2 * {x,y}
+      //             = 2 * {x,y} / r
+      //       dz/dz = 1 (duuh!)
+      //
+      double x = globalPos[Acts::ePos0];
+      double y = globalPos[Acts::ePos1];
+      double scale = 2 / std::hypot(x, y);
+      Acts::ActsMatrix<2, 3> jacXyzToRhoZ = Acts::ActsMatrix<2, 3>::Zero();
+      jacXyzToRhoZ(0, Acts::ePos0) = scale * x;
+      jacXyzToRhoZ(0, Acts::ePos1) = scale * y;
+      jacXyzToRhoZ(1, Acts::ePos2) = 1;
+      // compute Jacobian from local coordinates to rho/z
+      Acts::ActsMatrix<2, 2> jac =
+	jacXyzToRhoZ *
+	rotLocalToGlobal.block<3, 2>(Acts::ePos0, Acts::ePos0);
+      // compute rho/z variance
+      Acts::ActsVector<2> var = (jac * localCov * jac.transpose()).diagonal();
 
-        // Convert to a seed space point
-        // the space point requires only the variance of the transverse and
-        // longitudinal position. reduce computations by transforming the
-        // covariance directly from local to rho/z.
-        //
-        // compute Jacobian from global coordinates to rho/z
-        //
-        //         rho = sqrt(x² + y²)
-        // drho/d{x,y} = (1 / sqrt(x² + y²)) * 2 * {x,y}
-        //             = 2 * {x,y} / r
-        //       dz/dz = 1 (duuh!)
-        //
-        double x = globalPos[Acts::ePos0];
-        double y = globalPos[Acts::ePos1];
-        double scale = 2 / std::hypot(x, y);
-        Acts::ActsMatrix<2, 3> jacXyzToRhoZ = Acts::ActsMatrix<2, 3>::Zero();
-        jacXyzToRhoZ(0, Acts::ePos0) = scale * x;
-        jacXyzToRhoZ(0, Acts::ePos1) = scale * y;
-        jacXyzToRhoZ(1, Acts::ePos2) = 1;
-        // compute Jacobian from local coordinates to rho/z
-        Acts::ActsMatrix<2, 2> jac =
-            jacXyzToRhoZ *
-            rotLocalToGlobal.block<3, 2>(Acts::ePos0, Acts::ePos0);
-        // compute rho/z variance
-        Acts::ActsVector<2> var = (jac * localCov * jac.transpose()).diagonal();
-
-        // Save spacepoint
-        spacePoints.push_back(ACTSTracking::SeedSpacePoint(globalPos, var[0], var[1], sourceLink.index()));
-      }
+      // Save spacepoint
+      spacePoints.push_back(ACTSTracking::SeedSpacePoint(globalPos, var[0], var[1], sourceLink));
     }
   }
 
@@ -293,6 +310,11 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
   //
 
   //
+  // Caches
+  Acts::MagneticFieldContext magFieldContext = Acts::MagneticFieldContext();
+  Acts::MagneticFieldProvider::Cache magCache = magneticField()->makeCache(magFieldContext);
+
+  //
   // Initialize track finder
   using Updater = Acts::GainMatrixUpdater;
   using Smoother = Acts::GainMatrixSmoother;
@@ -300,14 +322,17 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
   using Navigator = Acts::Navigator;
   using Propagator = Acts::Propagator<Stepper, Navigator>;
   using CKF =
-      Acts::CombinatorialKalmanFilter<Propagator, Updater, Smoother>;
+    Acts::CombinatorialKalmanFilter<Propagator, Updater, Smoother>;
+
+  // Configurations
+  Navigator::Config navigatorCfg{trackingGeometry()};
+  navigatorCfg.resolvePassive   = false;
+  navigatorCfg.resolveMaterial  = true;
+  navigatorCfg.resolveSensitive = true;
 
   // construct all components for the fitter
   Stepper stepper(magneticField());
-  Navigator navigator(trackingGeometry());
-  navigator.resolvePassive = false;
-  navigator.resolveMaterial = true;
-  navigator.resolveSensitive = true;
+  Navigator navigator(navigatorCfg);
   Propagator propagator(std::move(stepper), std::move(navigator));
   CKF trackFinder(std::move(propagator));
 
@@ -326,7 +351,7 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
   TrackFinderOptions ckfOptions
       =TrackFinderOptions(
           geometryContext(), magneticFieldContext(), calibrationContext(),
-          ACTSTracking::MeasurementCalibrator(std::move(measurements)),
+          ACTSTracking::SourceLinkAccessor(),ACTSTracking::MeasurementCalibrator(std::move(measurements)),
           Acts::MeasurementSelector(measurementSelectorCfg),
           //Acts::LoggerWrapper{*logger}, pOptions,
           Acts::getDummyLogger(), pOptions,
@@ -349,7 +374,7 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
   finderCfg.sigmaScattering = _seedFinding_sigmaScattering;
   finderCfg.radLengthPerSeed = _seedFinding_radLengthPerSeed;
   finderCfg.minPt = _seedFinding_minPt;
-  finderCfg.bFieldInZ = magneticField()->getField(zeropos)[2]/Acts::UnitConstants::T*1e-3;
+  finderCfg.bFieldInZ = (*magneticField()->getField(zeropos, magCache))[2]/Acts::UnitConstants::T*1e-3;
   finderCfg.beamPos = {0,0};
   finderCfg.impactMax = 3;
 
@@ -369,10 +394,14 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
       Acts::SeedFilter<ACTSTracking::SeedSpacePoint>(filterCfg));
 
   // Create tools
-  std::function<Acts::Vector2(const ACTSTracking::SeedSpacePoint&, float, float, float)> extractCovariance
-      = [](const ACTSTracking::SeedSpacePoint& sp, float, float, float) -> Acts::Vector2
-      { return {sp.varianceR(), sp.varianceZ()}; };
-
+  std::function<std::pair<Acts::Vector3, Acts::Vector2>(const ACTSTracking::SeedSpacePoint&, float, float, float)>
+    extractGlobalQuantities =
+    [](const ACTSTracking::SeedSpacePoint& sp, float, float, float)
+    -> std::pair<Acts::Vector3, Acts::Vector2> {
+    Acts::Vector3 position{sp.x(), sp.y(), sp.z()};
+    Acts::Vector2 covariance{sp.varianceR(), sp.varianceZ()};
+    return std::make_pair(position, covariance);
+  };
 
   std::vector<const ACTSTracking::SeedSpacePoint*> spacePointPtrs(spacePoints.size(), nullptr);
   std::transform(spacePoints.begin(), spacePoints.end(), spacePointPtrs.begin(),
@@ -388,7 +417,7 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
       = Acts::SpacePointGridCreator::createGrid<ACTSTracking::SeedSpacePoint>(gridCfg);
   
   Acts::BinnedSPGroup<ACTSTracking::SeedSpacePoint> spacePointsGrouping (
-      spacePointPtrs.begin(), spacePointPtrs.end(), extractCovariance,
+      spacePointPtrs.begin(), spacePointPtrs.end(), extractGlobalQuantities,
       bottomBinFinder, topBinFinder, std::move(grid), finderCfg);
 
   Acts::Seedfinder<ACTSTracking::SeedSpacePoint> finder(finderCfg);
@@ -407,8 +436,7 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
       // Get the bottom space point and its reference surface
       // @todo do we need to sort the sps first
       const ACTSTracking::SeedSpacePoint* bottomSP = seed.sp().front();
-      const std::size_t hitIdx = bottomSP->measurementIndex();
-      const ACTSTracking::SourceLink& sourceLink = sourceLinks.at(hitIdx);
+      const ACTSTracking::SourceLink& sourceLink = bottomSP->sourceLink();
       const Acts::GeometryIdentifier& geoId = sourceLink.geometryId();
 
       const Acts::Surface* surface = trackingGeometry()->findSurface(geoId);
@@ -419,11 +447,15 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
       }
 
       // Get the magnetic field at the bottom space point
-      Acts::Vector3 field = magneticField()->getField(
-          {bottomSP->x(), bottomSP->y(), bottomSP->z()});
+      const Acts::Vector3 seedPos(bottomSP->x(), bottomSP->y(), bottomSP->z());
+      Acts::Result<Acts::Vector3> seedField
+	= magneticField()->getField(seedPos, magCache);
+      if (!seedField.ok()) {
+	throw std::runtime_error("Field lookup error: "+seedField.error().value());
+      }
 
       std::optional<Acts::BoundVector> optParams = Acts::estimateTrackParamsFromSeed(
-          geometryContext(), seed.sp().begin(), seed.sp().end(), *surface, field,
+          geometryContext(), seed.sp().begin(), seed.sp().end(), *surface, *seedField,
           0.1_T);
       if (!optParams.has_value())
       {
@@ -458,17 +490,22 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
                                                        {0,0,0});
 
       // state
+      Acts::Result<Acts::Vector3> hitField=magneticField()->getField(globalPos, magCache);
+      if (!hitField.ok()) {
+	throw std::runtime_error("Field lookup error: "+hitField.error().value());
+      }
+
       EVENT::TrackState* seedTrackState
-          = ACTSTracking::ACTS2Marlin_trackState(
-              lcio::TrackState::AtFirstHit,
-              paramseed,
-              magneticField()->getField(globalPos)[2]/Acts::UnitConstants::T
-                                                 );
+	= ACTSTracking::ACTS2Marlin_trackState(
+					       lcio::TrackState::AtFirstHit,
+					       paramseed,
+					       (*hitField)[2]/Acts::UnitConstants::T
+					       );
 
       // hits
       for(const ACTSTracking::SeedSpacePoint* sp : seed.sp())
       {
-        const ACTSTracking::SourceLink& sourceLink = sourceLinks.at(sp->measurementIndex());
+        const ACTSTracking::SourceLink& sourceLink = sp->sourceLink();
         seedtrack->addHit(sourceLink.lciohit());
       }
 
@@ -481,17 +518,15 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
 
     //
     // Find the tracks
-    TrackFinderResultContainer results=trackFinder.findTracks(sourceLinks, paramseeds, ckfOptions);
+    TrackFinderResultContainer results;
+    if(_runCKF)
+      results=trackFinder.findTracks(sourceLinks, paramseeds, ckfOptions);
 
-    for (TrackFinderResult& result : results)
-    {
-      if (result.ok())
-      {
+    for (TrackFinderResult& result : results) {
+      if (result.ok()) {
         const Acts::CombinatorialKalmanFilterResult<ACTSTracking::SourceLink>& fitOutput = result.value();
-        for(const size_t& trackTip : fitOutput.trackTips)
-        {
-          if(fitOutput.fittedParameters.count(trackTip)==0)
-          {
+        for(const size_t& trackTip : fitOutput.lastMeasurementIndices) {
+          if(fitOutput.fittedParameters.count(trackTip)==0) {
             streamlog_out(WARNING) << "No fitted track parameters for trajectory with entry index = " << trackTip << std::endl;
             continue;
           }
@@ -512,14 +547,13 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
           streamlog_out(DEBUG) << "Fitted Paramemeters" << std::endl << params << std::endl;
 
           // Make track object
-          EVENT::Track* track = ACTSTracking::ACTS2Marlin_track(fitOutput, trackTip, magneticField());
+          EVENT::Track* track =
+	    ACTSTracking::ACTS2Marlin_track(fitOutput, trackTip, magneticField(), magCache);
 
           // Save results
           trackCollection->addElement(track);
         }
-      }
-      else
-      {
+      } else {
         streamlog_out(WARNING) << "Track fit error: " << result.error() << std::endl;
         _fitFails++;
       }
@@ -531,9 +565,6 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
 
   // Save the output track collection
   evt->addCollection( trackCollection , _outputTrackCollection ) ;
-
-  // Increment the event number
-  _eventNumber++ ;
 }
 
 void ACTSSeedingProc::check( LCEvent* )
@@ -543,11 +574,7 @@ void ACTSSeedingProc::check( LCEvent* )
 
 
 void ACTSSeedingProc::end()
-{
-  streamlog_out(MESSAGE) << " end()  " << name()
-                         << " processed " << _eventNumber << " events in " << _runNumber << " runs "
-                         << std::endl ;
-}
+{ }
 
 LCCollection* ACTSSeedingProc::getCollection(const std::string& collectionName, LCEvent* evt)
 {

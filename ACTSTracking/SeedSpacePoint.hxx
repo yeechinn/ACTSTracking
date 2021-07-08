@@ -17,21 +17,23 @@ class SeedSpacePoint
  public:
   /// Construct the space point from global position and selected variances.
   ///
-  /// @tparam position_t Input position type
-  /// @param pos Global position
-  /// @param varRho Measurement variance of the global transverse distance
-  /// @param varZ Measurement variance of the global longitudinal position
-  /// @param measurementIndex Index of the underlying measurement
+  // \tparam position_t Input position type
+  // \param pos Global position
+  // \param varRho Measurement variance of the global transverse distance
+  // \param varZ Measurement variance of the global longitudinal position
+  // \param sourceLink Link to the original measurement
+  //
   template <typename position_t>
-  SeedSpacePoint(const Eigen::MatrixBase<position_t>& pos, float varRho,
-                 float varZ, std::size_t measurementIndex)
+  SeedSpacePoint(const Eigen::MatrixBase<position_t>& pos,
+		 float varRho, float varZ,
+		 const SourceLink& sourceLink)
       : m_x(pos[Acts::ePos0]),
         m_y(pos[Acts::ePos1]),
         m_z(pos[Acts::ePos2]),
         m_rho(std::hypot(m_x, m_y)),
         m_varianceRho(varRho),
         m_varianceZ(varZ),
-        m_measurementIndex(measurementIndex)
+        m_sourceLink(sourceLink)
   {
     EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(position_t, 3);
   }
@@ -43,7 +45,7 @@ class SeedSpacePoint
   constexpr float varianceR() const { return m_varianceRho; }
   constexpr float varianceZ() const { return m_varianceZ; }
 
-  constexpr std::size_t measurementIndex() const { return m_measurementIndex; }
+  constexpr SourceLink sourceLink() const { return m_sourceLink; }
 
  private:
   // Global position
@@ -55,7 +57,7 @@ class SeedSpacePoint
   float m_varianceRho;
   float m_varianceZ;
   // Index of the corresponding measurement
-  std::size_t m_measurementIndex;
+  SourceLink m_sourceLink;
 };
 
 constexpr bool operator==(const SeedSpacePoint& lhs, const SeedSpacePoint& rhs)
@@ -63,7 +65,7 @@ constexpr bool operator==(const SeedSpacePoint& lhs, const SeedSpacePoint& rhs)
   // TODO would it be sufficient to check just the index under the assumption
   //   that the same measurement index always produces the same space point?
   // no need to check r since it is fully defined by x/y
-  return (lhs.measurementIndex() == rhs.measurementIndex()) and
+  return (lhs.sourceLink() == rhs.sourceLink()) and
       (lhs.x() == rhs.x()) and (lhs.y() == rhs.y()) and
       (lhs.z() == rhs.z()) and (lhs.varianceR() == rhs.varianceR()) and
       (lhs.varianceZ() == rhs.varianceZ());

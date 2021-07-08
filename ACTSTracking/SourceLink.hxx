@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Defines.hxx"
+#include "GeometryContainers.hxx"
 
 #include <EVENT/TrackerHit.h>
 
@@ -23,16 +23,16 @@ class SourceLink final
   SourceLink& operator=(SourceLink&&) = default;
 
   /// Access the geometry identifier.
-  Acts::GeometryIdentifier geometryId() const { return m_geometryId; }
+  constexpr Acts::GeometryIdentifier geometryId() const { return m_geometryId; }
   /// Access the index.
-  std::size_t index() const { return m_index; }
+  constexpr std::size_t index() const { return m_index; }
   /// Access the LCIO hit
-  EVENT::TrackerHit* lciohit() const { return m_lciohit; }
+  constexpr EVENT::TrackerHit* lciohit() const { return m_lciohit; }
 
  private:
   Acts::GeometryIdentifier m_geometryId;
-  std::size_t m_index;
-  EVENT::TrackerHit *m_lciohit;
+  std::size_t m_index          =-1;
+  EVENT::TrackerHit *m_lciohit =nullptr;
 
   friend constexpr bool operator==(const SourceLink& lhs,
                                    const SourceLink& rhs) {
@@ -47,5 +47,7 @@ class SourceLink final
 };
 
 /// Container of index source links
-using SourceLinkContainer = std::vector<SourceLink>;
+using SourceLinkContainer = GeometryIdMultiset<SourceLink>;
+// Wrapper for SourceLinkContainer for use with CKF
+using SourceLinkAccessor = GeometryIdMultisetAccessor<SourceLink>;
 }

@@ -623,9 +623,10 @@ void ACTSProcBase::buildBfield()
   //  magneticFieldVector[2] = 3.57e-13
   //  dd4hep::tesla = 1e-13
   //  Acts::UnitConstants::T = 0.000299792
-  _magneticField = std::make_shared<Acts::ConstantBField>(
-      magneticFieldVector[0]/dd4hep::tesla * Acts::UnitConstants::T,
-      magneticFieldVector[1]/dd4hep::tesla * Acts::UnitConstants::T,
-      magneticFieldVector[2]/dd4hep::tesla * Acts::UnitConstants::T
-                                        );
+  _magneticField = std::make_shared<Acts::ConstantBField>(Acts::Vector3(
+									magneticFieldVector[0]/dd4hep::tesla * Acts::UnitConstants::T,
+									magneticFieldVector[1]/dd4hep::tesla * Acts::UnitConstants::T,
+									magneticFieldVector[2]/dd4hep::tesla * Acts::UnitConstants::T
+									)
+							  );
 }

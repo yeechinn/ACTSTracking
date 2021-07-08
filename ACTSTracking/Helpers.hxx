@@ -25,13 +25,15 @@ namespace ACTSTracking
  *
  * \param fitOutput CKF fit result
  * \param trackTip index of track to convert inside fit result
- * \params magneticField magnetic field at different locations in the detector
+ * \param magneticField magnetic field at different locations in the detector
+ * \param magCache cache to help with magnetic field lookup 
  *
  * \return Track with equivalent parameters of the ACTS track
  */
 EVENT::Track* ACTS2Marlin_track(const Acts::CombinatorialKalmanFilterResult<ACTSTracking::SourceLink>& fitOutput,
                                 std::size_t trackTip,
-                                std::shared_ptr<Acts::MagneticFieldProvider> magneticField);
+                                std::shared_ptr<Acts::MagneticFieldProvider> magneticField,
+				Acts::MagneticFieldProvider::Cache& magCache);
 
 //! Convert ACTS KF result to LCIO track class
 /**
@@ -41,12 +43,14 @@ EVENT::Track* ACTS2Marlin_track(const Acts::CombinatorialKalmanFilterResult<ACTS
  *  - track states at IP
  *
  * \param fitOutput KF fit result
- * \params magneticField magnetic field at different locations in the detector
+ * \param magneticField magnetic field at different locations in the detector
+ * \param magCache cache to help with magnetic field lookup 
  *
  * \return Track with equivalent parameters of the ACTS track
  */
 EVENT::Track* ACTS2Marlin_track(const Acts::KalmanFitterResult<ACTSTracking::SourceLink>& fitOutput,
-                                std::shared_ptr<Acts::MagneticFieldProvider> magneticField);
+                                std::shared_ptr<Acts::MagneticFieldProvider> magneticField,
+				Acts::MagneticFieldProvider::Cache& magCache);
 
 //! Convert ACTS track state class to Marlin class
 /**

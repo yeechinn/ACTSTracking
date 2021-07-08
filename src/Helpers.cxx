@@ -8,7 +8,8 @@ namespace ACTSTracking
 
 EVENT::Track* ACTS2Marlin_track(const Acts::CombinatorialKalmanFilterResult<ACTSTracking::SourceLink>& fitOutput,
                                 std::size_t trackTip,
-                                std::shared_ptr<Acts::MagneticFieldProvider> magneticField)
+                                std::shared_ptr<Acts::MagneticFieldProvider> magneticField,
+				Acts::MagneticFieldProvider::Cache& magCache)
 {
   IMPL::TrackImpl* track = new IMPL::TrackImpl ;
   Acts::MultiTrajectoryHelpers::TrajectoryState trajState =
@@ -20,13 +21,19 @@ EVENT::Track* ACTS2Marlin_track(const Acts::CombinatorialKalmanFilterResult<ACTS
   track->setNdf (trajState.NDF    );
 
   // Track state at IP
-  static const Acts::Vector3 zeropos(0,0,0);
+  static const Acts::Vector3 zeroPos(0,0,0);
+  Acts::Result<Acts::Vector3> fieldRes=magneticField->getField(zeroPos, magCache);
+  if (!fieldRes.ok()) {
+    throw std::runtime_error("Field lookup error: "+fieldRes.error().value());
+  }
+  Acts::Vector3 field = *fieldRes;
+
   const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.at(trackTip);
   EVENT::TrackState* trackStateAtIP
     = ACTSTracking::ACTS2Marlin_trackState(
 					   EVENT::TrackState::AtIP,
 					   params,
-					   magneticField->getField(zeropos)[2]/Acts::UnitConstants::T
+					   field[2]/Acts::UnitConstants::T
 					   );
   track->trackStates().push_back(trackStateAtIP);
 
@@ -45,12 +52,18 @@ EVENT::Track* ACTS2Marlin_track(const Acts::CombinatorialKalmanFilterResult<ACTS
     hitsOnTrack.push_back(myHit);
 
     // Save track state information
-    const Acts::Vector3 hitpos(myHit->getPosition()[0],myHit->getPosition()[1],myHit->getPosition()[2]);
+    const Acts::Vector3 hitPos(myHit->getPosition()[0],myHit->getPosition()[1],myHit->getPosition()[2]);
+    Acts::Result<Acts::Vector3> fieldRes=magneticField->getField(hitPos, magCache);
+    if (!fieldRes.ok()) {
+      throw std::runtime_error("Field lookup error: "+fieldRes.error().value());
+    }
+    Acts::Vector3 field = *fieldRes;
+
     EVENT::TrackState* trackState
       = ACTSTracking::ACTS2Marlin_trackState(
 					     EVENT::TrackState::AtOther,
 					     state.smoothed(), state.smoothedCovariance(),
-					     magneticField->getField(hitpos)[2]/Acts::UnitConstants::T
+					     field[2]/Acts::UnitConstants::T
 					     );
     statesOnTrack.push_back(trackState);
 
@@ -79,11 +92,12 @@ EVENT::Track* ACTS2Marlin_track(const Acts::CombinatorialKalmanFilterResult<ACTS
 }
 
 EVENT::Track* ACTS2Marlin_track(const Acts::KalmanFitterResult<ACTSTracking::SourceLink>& fitOutput,
-                                std::shared_ptr<Acts::MagneticFieldProvider> magneticField)
+                                std::shared_ptr<Acts::MagneticFieldProvider> magneticField,
+				Acts::MagneticFieldProvider::Cache& magCache)
 {
   IMPL::TrackImpl* track = new IMPL::TrackImpl ;
   Acts::MultiTrajectoryHelpers::TrajectoryState trajState =
-      Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, fitOutput.trackTip);
+      Acts::MultiTrajectoryHelpers::trajectoryState(fitOutput.fittedStates, fitOutput.lastMeasurementIndex);
 
   //
   // Fit state
@@ -91,13 +105,19 @@ EVENT::Track* ACTS2Marlin_track(const Acts::KalmanFitterResult<ACTSTracking::Sou
   track->setNdf (trajState.NDF    );
 
   // Track state at IP
-  static const Acts::Vector3 zeropos(0,0,0);
+  static const Acts::Vector3 zeroPos(0,0,0);
+  Acts::Result<Acts::Vector3> fieldRes=magneticField->getField(zeroPos, magCache);
+  if (!fieldRes.ok()) {
+    throw std::runtime_error("Field lookup error: "+fieldRes.error().value());
+  }
+  Acts::Vector3 field = *fieldRes;
+
   const Acts::BoundTrackParameters& params = fitOutput.fittedParameters.value();
   EVENT::TrackState* trackStateAtIP
     = ACTSTracking::ACTS2Marlin_trackState(
 					   EVENT::TrackState::AtIP,
 					   params,
-					   magneticField->getField(zeropos)[2]/Acts::UnitConstants::T
+					   field[2]/Acts::UnitConstants::T
 					   );
   track->trackStates().push_back(trackStateAtIP);
 
@@ -105,7 +125,7 @@ EVENT::Track* ACTS2Marlin_track(const Acts::KalmanFitterResult<ACTSTracking::Sou
   // Hits and associated track states
   EVENT::TrackerHitVec hitsOnTrack;
   EVENT::TrackStateVec statesOnTrack;
-  fitOutput.fittedStates.visitBackwards(fitOutput.trackTip, [&](const Acts::MultiTrajectory<ACTSTracking::SourceLink>::ConstTrackStateProxy& state)
+  fitOutput.fittedStates.visitBackwards(fitOutput.lastMeasurementIndex, [&](const Acts::MultiTrajectory<ACTSTracking::SourceLink>::ConstTrackStateProxy& state)
   {
     // No measurement at this state
     if(!state.typeFlags().test(Acts::TrackStateFlag::MeasurementFlag))
@@ -116,12 +136,18 @@ EVENT::Track* ACTS2Marlin_track(const Acts::KalmanFitterResult<ACTSTracking::Sou
     hitsOnTrack.push_back(myHit);
 
     // Save track state information
-    const Acts::Vector3 hitpos(myHit->getPosition()[0],myHit->getPosition()[1],myHit->getPosition()[2]);
+    const Acts::Vector3 hitPos(myHit->getPosition()[0],myHit->getPosition()[1],myHit->getPosition()[2]);
+    Acts::Result<Acts::Vector3> fieldRes=magneticField->getField(hitPos, magCache);
+    if (!fieldRes.ok()) {
+      throw std::runtime_error("Field lookup error: "+fieldRes.error().value());
+    }
+    Acts::Vector3 field = *fieldRes;
+
     EVENT::TrackState* trackState
       = ACTSTracking::ACTS2Marlin_trackState(
 					     EVENT::TrackState::AtOther,
 					     state.smoothed(), state.smoothedCovariance(),
-					     magneticField->getField(hitpos)[2]/Acts::UnitConstants::T
+					     hitPos[2]/Acts::UnitConstants::T
 					     );
     statesOnTrack.push_back(trackState);
 
