@@ -75,8 +75,8 @@ class ACTSSeedingProc : public ACTSProcBase
   double _initialTrackError_lambda ;
   double _initialTrackError_time   = 100 *Acts::UnitConstants::ns; // No Marlin default
 
-  double  _CKF_chi2CutOff            =1;
-  int32_t _CKF_numMeasurementsCutOff =1;
+  double  _CKF_chi2CutOff            =15;
+  int32_t _CKF_numMeasurementsCutOff =10;
 
   // Seeding configuration
   std::vector<std::string> _seedingLayers;
