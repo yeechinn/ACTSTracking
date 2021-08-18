@@ -50,6 +50,17 @@ ACTSCKFTrackingProc::ACTSCKFTrackingProc() : ACTSProcBase("ACTSCKFTrackingProc")
   // modify processor description
   _description = "Build and fit tracks out of all hits associated to an MC particle" ;
 
+  // CKF configuration
+  registerProcessorParameter("CKF_Chi2CutOff",
+                             "Maximum local chi2 contribution.",
+			     _CKF_chi2CutOff,
+                             _CKF_chi2CutOff);
+
+  registerProcessorParameter("CKF_NumMeasurementsCutOff",
+                             "Maximum number of associated measurements on a single surface.",
+			     _CKF_numMeasurementsCutOff,
+                             _CKF_numMeasurementsCutOff);
+
   // Input collections - mc particles, tracker hits and the relationships between them
   registerInputCollections( LCIO::TRACKERHITPLANE,
                             "TrackerHitCollectionNames" ,
@@ -240,7 +251,8 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
   CKF trackFinder(std::move(propagator));
 
   // Set the options
-  Acts::MeasurementSelector::Config measurementSelectorCfg={{Acts::GeometryIdentifier(), {15,10}}};
+  Acts::MeasurementSelector::Config measurementSelectorCfg =
+    {{Acts::GeometryIdentifier(), {_CKF_chi2CutOff,(std::size_t)(_CKF_numMeasurementsCutOff)}}};
 
   Acts::PropagatorPlainOptions pOptions;
   pOptions.maxSteps = 10000;
