@@ -235,6 +235,9 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     </parameter>
     <!--Name of the MCParticle input collection-->
     <parameter name="MCParticleCollectionName" type="string" lcioInType="MCParticle">MCParticle </parameter>
+    <!-- CKF Configuration -->
+    <parameter name="CKF_Chi2CutOff" type="float">1</parameter>
+    <parameter name="CKF_NumMeasurementsCutOff" type="int">1</parameter>
     <!--Silicon track Collection Name-->
     <parameter name="TrackCollectionName" type="string" lcioOutType="Track">Tracks</parameter>
     <parameter name="Verbosity" type="string">DEBUG4</parameter>

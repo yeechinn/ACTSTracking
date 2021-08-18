@@ -245,6 +245,9 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <parameter name="SeedFinding_RadLengthPerSeed" type="float">0.1</parameter>
     <parameter name="SeedFinding_SigmaScattering" type="float">50</parameter>
     <parameter name="SeedFinding_MinPt" type="float">500</parameter>
+    <!-- CKF Configuration -->
+    <parameter name="CKF_Chi2CutOff" type="float">1</parameter>
+    <parameter name="CKF_NumMeasurementsCutOff" type="int">1</parameter>
     <!--Define input tracker hits and relations. NB. Order must be respected -->
     <parameter name="TrackerHitCollectionNames" type="StringVec" lcioInType="TrackerHitPlane">
       VBTrackerHits

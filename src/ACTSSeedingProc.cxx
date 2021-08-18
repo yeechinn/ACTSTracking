@@ -85,6 +85,7 @@ ACTSSeedingProc::ACTSSeedingProc() : ACTSProcBase("ACTSSeedingProc")
                              _initialTrackError_pos,
                              10_um);
 
+  // Seeding configurations
   registerProcessorParameter("SeedingLayers",
                              "Layers to use for seeding in format \"VolID LayID\", one per line. ID's are ACTS GeometryID's. * can be used to wildcard.",
                              _seedingLayers,
@@ -129,6 +130,17 @@ ACTSSeedingProc::ACTSSeedingProc() : ACTSProcBase("ACTSSeedingProc")
                              "Minimum pT of tracks to seed.",
                              _seedFinding_minPt,
                              _seedFinding_minPt);
+
+  // CKF configuration
+  registerProcessorParameter("CKF_Chi2CutOff",
+                             "Maximum local chi2 contribution.",
+			     _CKF_chi2CutOff,
+                             _CKF_chi2CutOff);
+
+  registerProcessorParameter("CKF_NumMeasurementsCutOff",
+                             "Maximum number of associated measurements on a single surface.",
+			     _CKF_numMeasurementsCutOff,
+                             _CKF_numMeasurementsCutOff);
 
   // Input collections - mc particles, tracker hits and the relationships between them
   registerInputCollections( LCIO::TRACKERHITPLANE,
@@ -337,7 +349,8 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
   CKF trackFinder(std::move(propagator));
 
   // Set the options
-  Acts::MeasurementSelector::Config measurementSelectorCfg={{Acts::GeometryIdentifier(), {15,10}}};
+  Acts::MeasurementSelector::Config measurementSelectorCfg =
+    {{Acts::GeometryIdentifier(), {_CKF_chi2CutOff,(std::size_t)(_CKF_numMeasurementsCutOff)}}};
 
   Acts::PropagatorPlainOptions pOptions;
   pOptions.maxSteps = 10000;

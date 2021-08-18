@@ -64,7 +64,9 @@ class ACTSCKFTrackingProc : public ACTSProcBase
   double _initialTrackError_lambda = 1   *Acts::UnitConstants::degree; // Marlin (tanlambda) default: 1.e1
   double _initialTrackError_z0     = 100 *Acts::UnitConstants::um; // Marlin default: 1.e3
   double _initialTrackError_time   = 1   *Acts::UnitConstants::ns; // No Marlin default
-  //double _maxChi2perHit;
+
+  double  _CKF_chi2CutOff            =15;
+  int32_t _CKF_numMeasurementsCutOff =10;
 
   uint32_t _fitFails;		
 };
