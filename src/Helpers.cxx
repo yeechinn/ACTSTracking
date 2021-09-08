@@ -196,8 +196,8 @@ EVENT::TrackState* ACTS2Marlin_trackState(int location,
   // Trajectory parameters
 
   // Central values
-  double z0    =value[Acts::eBoundLoc0  ];
-  double d0    =value[Acts::eBoundLoc1  ];
+  double d0    =value[Acts::eBoundLoc0  ];
+  double z0    =value[Acts::eBoundLoc1  ];
   double phi   =value[Acts::eBoundPhi   ];
   double theta =value[Acts::eBoundTheta ];
   double qoverp=value[Acts::eBoundQOverP];
@@ -216,14 +216,14 @@ EVENT::TrackState* ACTS2Marlin_trackState(int location,
   // Uncertainties (covariance matrix)
   Acts::ActsMatrix<6, 6> jac = Acts::ActsMatrix<6, 6>::Zero();
 
-  jac(0, Acts::eBoundLoc1  ) =1;
+  jac(0, Acts::eBoundLoc0  ) =1;
 
   jac(1, Acts::eBoundPhi   ) =1;
 
   jac(2, Acts::eBoundTheta ) =omega/std::tan(theta);
   jac(2, Acts::eBoundQOverP) =omega/qoverp;
 
-  jac(3, Acts::eBoundLoc0  ) =1;
+  jac(3, Acts::eBoundLoc1  ) =1;
 
   jac(4, Acts::eBoundTheta ) =std::pow(1/std::cos(lambda), 2);
   
