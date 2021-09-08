@@ -9,16 +9,47 @@
 
 namespace ACTSTracking
 {
-bool track_duplicate_compare(const EVENT::Track* trk1, const EVENT::Track* trk2)
-{
-  // If number of hits are different, then the one with more
-  // hits should be chosen first
-  if(trk1->getTrackerHits().size() != trk2->getTrackerHits().size())
-    return trk1->getTrackerHits().size() > trk2->getTrackerHits().size();
+  /**
+   * Return true if `trk1` and `trk2` share at least 50% of hits.
+   */
+  inline bool tracks_equal(const EVENT::Track* trk1, const EVENT::Track* trk2)
+  {
+    const EVENT::TrackerHitVec& hits1=trk1->getTrackerHits();
+    const EVENT::TrackerHitVec& hits2=trk2->getTrackerHits();
 
-  // Same number of hits means I want smaller chi2
-  return trk1->getChi2()<trk2->getChi2();
-}
+    // Number of overlapping hist
+    uint32_t hitOlap=0;
+    for(const EVENT::TrackerHit* hit1 : hits1)
+      {
+	if(std::find(hits2.begin(), hits2.end(), hit1)!=hits2.end())
+	  { hitOlap++; }
+      }
+
+    // Smaller track count
+    uint32_t size = std::min(hits1.size(), hits2.size());
+
+    return 2*hitOlap>size; // half of smaller track belong to larger track
+  }
+
+  /**
+   * Return true if `trk1` is of higher quality than `trk2`.
+   */
+  bool track_quality_compare(const EVENT::Track* trk1, const EVENT::Track* trk2)
+  {
+    // If number of hits are different, then the one with more
+    // hits should be chosen first
+    if(trk1->getTrackerHits().size() != trk2->getTrackerHits().size())
+      return trk1->getTrackerHits().size() > trk2->getTrackerHits().size();
+
+    // Same number of hits means I want smaller chi2
+    return trk1->getChi2()<trk2->getChi2();
+  }
+
+  inline bool track_duplicate_compare(const EVENT::Track* trk1, const EVENT::Track* trk2)
+  {
+    return trk1->getTrackState(TrackState::AtIP)->getTanLambda()
+      < trk2->getTrackState(TrackState::AtIP)->getTanLambda();
+  }
 }
 
 ACTSDuplicateRemoval aACTSDuplicateRemoval;
@@ -76,41 +107,41 @@ void ACTSDuplicateRemoval::processEvent( LCEvent * evt )
     sortedInput.insert(insertion_point, myTrk);
   }
 
-
   //
   // Perform overlap removal by checking existing tracks and
   // adding it only if a matching track (50% shared hits)
   // is not found.
-
+  std::vector<EVENT::Track*> finalTracks;
   for(EVENT::Track* myTrk : sortedInput)
     {
-      bool addme=true;
-
-      const EVENT::TrackerHitVec& myHits=myTrk->getTrackerHits();
-
-      for(int i=0; i < outcol->getNumberOfElements() ; ++i)
+      bool foundAnEqual=false;
+      for(int i=(finalTracks.size() >= 10) ? finalTracks.size()-10 : 0;
+	  i < finalTracks.size();
+	  ++i)
 	{
-	  const EVENT::Track* otherTrk = static_cast<const EVENT::Track*>( outcol->getElementAt(i) ) ;
-	  const EVENT::TrackerHitVec& otherHits=otherTrk->getTrackerHits();
+	  EVENT::Track* otherTrk = finalTracks[i];
 
-	  // Count overlapping hits
-	  uint32_t hitOlap=0;
-	  for(const EVENT::TrackerHit* myHit : myHits)
-	    {
-	      if(std::find(otherHits.begin(), otherHits.end(), myHit)!=otherHits.end())
-		{ hitOlap++; }
-	    }
+	  // Skip tracks that are not equal
+	  if(!ACTSTracking::tracks_equal(myTrk, otherTrk))
+	    { continue; }
+	  foundAnEqual=true;
 
-	  if(2*hitOlap>myHits.size()) // half my hits belong to superior track
+	  // Replace if my track is better
+	  if(ACTSTracking::track_quality_compare(myTrk, otherTrk))
 	    {
-	      addme=false;
+	      finalTracks[i]=myTrk;
 	      break;
 	    }
 	}
 
-      if(addme)
-	{ outcol->addElement(myTrk); }
+      if(!foundAnEqual) // Add a new track that does not duplicate
+	{ finalTracks.push_back(myTrk);	}
     }
+
+  //
+  // Create final collection
+  for(EVENT::Track* trk : finalTracks)
+    { outcol->addElement(trk); }
 
   // Save the output track collection
   outcol->setTransient( false ) ;

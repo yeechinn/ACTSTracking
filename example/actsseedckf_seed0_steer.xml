@@ -39,7 +39,6 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <processor name="MergeSimHits" />
     <processor name="MergeHits" />
     <processor name="MergeHitsRelations" />
-    <processor name="MyCreateTrackRelations" />
     <processor name="MyLCParquet" />
   </execute>
 
@@ -309,11 +308,6 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <parameter name="OutputCollection" type="string"> TrackerHitsRelations </parameter>
   </processor>
 
-  <processor name="MyCreateTrackRelations" type="CreateTrackRelations">
-    <parameter name="TrackCollection" type="string">Tracks</parameter>
-    <parameter name="Track2TrackerHitRelationName" type="string">Tracks_HitsRelation</parameter>
-  </processor>
-
   <processor name="MyTrackTruth" type="TrackTruthProc">
     <parameter name="TrackCollection" type="string" lcioInType="Track">Tracks</parameter>
     <parameter name="MCParticleCollection" type="string" lcioInType="MCParticle">MCParticle</parameter>
@@ -328,18 +322,15 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <parameter name="Particle2TrackRelationName" type="string" lcioOutType="LCRelation">MCParticle_Tracks</parameter>
   </processor>
 
-  <processor name="MyLCParquet" type="LCParquet">
-    <!--Location of output Parquet files-->
-    <parameter name="OutputDir" type="string">data_actsseed0_bib</parameter>
+  <processor name="MyLCParquet" type="TrackPerfParquet">
+    <!--Location of output-->
+    <parameter name="OutputDir" type="string">data_acts</parameter>
     <!--Name of the MCParticle collection-->
     <parameter name="MCParticleCollection" type="string" lcioInType="MCParticle">MCParticle</parameter>
-    <!--Name of the TrackerHit collection-->
-    <parameter name="TrackerHitCollection" type="string" lcioInType="TrackerHit">HitsCollection</parameter>
     <!--Name of the Track collection-->
     <parameter name="TrackCollection" type="string" lcioInType="Track">Tracks</parameter>
     <!--Relations-->
-    <parameter name="LCRelationCollections" type="string" lcioInType="LCRelation">Tracks_HitsRelation MCParticle_Tracks</parameter>
-    <parameter name="LCRelationPrefixes" type="string">tr2th mc2tr</parameter>
+    <parameter name="MCTrackRelationCollection" type="string" lcioInType="LCRelation">MCParticle_Tracks</parameter>
   </processor>
 
 </marlin>

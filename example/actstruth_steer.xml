@@ -309,20 +309,15 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <parameter name="Particle2TrackRelationName" type="string" lcioOutType="LCRelation">MCParticle_TruthTracks</parameter>
   </processor>
 
-  <processor name="MyLCParquet" type="LCParquet">
+  <processor name="MyLCParquet" type="TrackPerfParquet">
     <!--Location of sample output-->
-    <parameter name="SampleName" type="string">data_actstruth</parameter>
+    <parameter name="OutputDir" type="string">data_acts</parameter>
     <!--Name of the MCParticle collection-->
     <parameter name="MCParticleCollection" type="string" lcioInType="MCParticle">MCParticle</parameter>
-    <!--Name of the TrackerSimHit collection-->
-    <parameter name="SimTrackerHitCollection" type="string" lcioInType="SimTrackerHit">SimHitsCollection</parameter>
-    <!--Name of the TrackerHit collection-->
-    <parameter name="TrackerHitCollection" type="string" lcioInType="TrackerHit">HitsCollection</parameter>
     <!--Name of the Track collection-->
     <parameter name="TrackCollection" type="string" lcioInType="Track">TruthTracks</parameter>
     <!--Relations-->
-    <parameter name="LCRelationCollections" type="string" lcioInType="LCRelation">TrackerHitsRelations TruthTracks_HitsRelation MCParticle_TruthTracks</parameter>
-    <parameter name="LCRelationPrefixes" type="string">th2st tr2th mc2tr</parameter>
+    <parameter name="MCTrackRelationCollection" type="string" lcioInType="LCRelation">MCParticle_TruthTracks</parameter>
   </processor>
 
 </marlin>

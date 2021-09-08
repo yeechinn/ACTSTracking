@@ -15,7 +15,7 @@
 
 #include "GeometryIdMappingTool.hxx"
 
-//! \brief Base processor for ACTS tracking
+//! Base processor for ACTS tracking
 /**
  * Performs tasks common to all ACTS processors
  *  - loading tracking geometry
