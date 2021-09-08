@@ -309,18 +309,15 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <parameter name="Particle2TrackRelationName" type="string" lcioOutType="LCRelation">MCParticle_CleanedTracks</parameter>
   </processor>
 
-  <processor name="MyLCParquet" type="LCParquet">
+  <processor name="MyLCParquet" type="TrackPerfParquet">
     <!--Location of output-->
     <parameter name="OutputDir" type="string">data_acts</parameter>
     <!--Name of the MCParticle collection-->
     <parameter name="MCParticleCollection" type="string" lcioInType="MCParticle">MCParticle</parameter>
-    <!--Name of the TrackerHit collection-->
-    <parameter name="TrackerHitCollection" type="string" lcioInType="TrackerHit">HitsCollection</parameter>
     <!--Name of the Track collection-->
     <parameter name="TrackCollection" type="string" lcioInType="Track">CleanedTracks</parameter>
-   <!--Relations-->
-   <parameter name="LCRelationCollections" type="string" lcioInType="LCRelation">CleanedTracks_HitsRelation MCParticle_CleanedTracks</parameter>
-   <parameter name="LCRelationPrefixes" type="string">tr2th mc2tr</parameter>
+    <!--Relations-->
+    <parameter name="MCTrackRelationCollection" type="string" lcioInType="LCRelation">MCParticle_CleanedTracks</parameter>
   </processor>
 
 </marlin>
