@@ -108,8 +108,8 @@ void ACTSProcBase::buildDetector()
     // Set up the converter first
     Acts::MaterialMapJsonConverter::Config jsonGeoConvConfig;
     // Set up the json-based decorator
-    matDeco = std::make_shared<const Acts::JsonMaterialDecorator>(
-        jsonGeoConvConfig, _matFile);
+    matDeco = std::make_shared<const Acts::JsonMaterialDecorator>
+      (jsonGeoConvConfig, _matFile, Acts::Logging::INFO);
   }
 
   // configure surface array creator
