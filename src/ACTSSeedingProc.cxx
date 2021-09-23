@@ -386,8 +386,8 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
   finderCfg.cotThetaMax = 7.40627;  // 2.7 eta;
   finderCfg.sigmaScattering = _seedFinding_sigmaScattering;
   finderCfg.radLengthPerSeed = _seedFinding_radLengthPerSeed;
-  finderCfg.minPt = _seedFinding_minPt;
-  finderCfg.bFieldInZ = (*magneticField()->getField(zeropos, magCache))[2]/Acts::UnitConstants::T*1e-3;
+  finderCfg.minPt = _seedFinding_minPt * Acts::UnitConstants::MeV;
+  finderCfg.bFieldInZ = (*magneticField()->getField(zeropos, magCache))[2];
   finderCfg.beamPos = {0,0};
   finderCfg.impactMax = 3;
 
@@ -434,18 +434,23 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
       bottomBinFinder, topBinFinder, std::move(grid), finderCfg);
 
   Acts::Seedfinder<ACTSTracking::SeedSpacePoint> finder(finderCfg);
+  decltype(finder)::State state;
+  std::vector<Acts::Seed<ACTSTracking::SeedSpacePoint>> seeds;
+  std::vector<Acts::BoundTrackParameters> paramseeds;
 
   Acts::BinnedSPGroupIterator<ACTSTracking::SeedSpacePoint> group = spacePointsGrouping.begin();
   Acts::BinnedSPGroupIterator<ACTSTracking::SeedSpacePoint> groupEnd = spacePointsGrouping.end();
-  for (; !(group == groupEnd); ++group)
-  {
-    std::vector<Acts::Seed<ACTSTracking::SeedSpacePoint>> seeds=finder.createSeedsForGroup(group.bottom(), group.middle(), group.top());
+  for (; !(group == groupEnd); ++group) {
+    //
+    // Run seeding
+    seeds.clear();
+
+    finder.createSeedsForGroup(state, std::back_inserter(seeds), group.bottom(), group.middle(), group.top());
 
     //
     // Loop over seeds and get track parameters
-    std::vector<Acts::BoundTrackParameters> paramseeds;
-    for(const Acts::Seed<ACTSTracking::SeedSpacePoint>& seed : seeds)
-    {
+    paramseeds.clear();
+    for(const Acts::Seed<ACTSTracking::SeedSpacePoint>& seed : seeds) {
       // Get the bottom space point and its reference surface
       // @todo do we need to sort the sps first
       const ACTSTracking::SeedSpacePoint* bottomSP = seed.sp().front();
@@ -516,8 +521,7 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
 					       );
 
       // hits
-      for(const ACTSTracking::SeedSpacePoint* sp : seed.sp())
-      {
+      for(const ACTSTracking::SeedSpacePoint* sp : seed.sp()) {
         const ACTSTracking::SourceLink& sourceLink = sp->sourceLink();
         seedtrack->addHit(sourceLink.lciohit());
       }
