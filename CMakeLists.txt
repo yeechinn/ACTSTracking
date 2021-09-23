@@ -22,6 +22,8 @@ FIND_PACKAGE( DD4hep REQUIRED COMPONENTS DDCore )
 
 FIND_PACKAGE( ROOT REQUIRED)
 
+FIND_PACKAGE( Acts REQUIRED COMPONENTS Core PluginJson PluginTGeo )
+
 ### DOCUMENTATION ###########################################################
 
 OPTION( INSTALL_DOC "Set to OFF to skip build/install Documentation" OFF )
@@ -51,3 +53,6 @@ TARGET_INCLUDE_DIRECTORIES(ACTSTracking PRIVATE ./ACTSTracking ${Marlin_INCLUDE_
 TARGET_LINK_LIBRARIES(ACTSTracking
   ${ROOT_LIBRARIES} DD4hep::DDCore
   ActsCore ActsPluginTGeo ActsPluginJson)
+
+INSTALL( TARGETS ACTSTracking DESTINATION lib )
+
