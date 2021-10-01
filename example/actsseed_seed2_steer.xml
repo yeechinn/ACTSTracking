@@ -219,9 +219,13 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
 
   <!-- == TruthTrackFinder parameters == -->
   <processor name="MyCKFTracking" type="ACTSSeedingProc">
-    <!--Path to material description-->
+    <!-- Path to material description -->
     <parameter name="MatFile" type="string">
       data/material-maps.json
+    </parameter>
+    <!-- Path to tracking geometry -->
+    <parameter name="TGeoFile" type="string">
+      data/MuColl_v1.root
     </parameter>
     <!-- Vol Layer, use -1 for all, ACTS numbers -->
     <!-- seed 2 -->

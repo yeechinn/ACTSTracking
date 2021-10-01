@@ -26,6 +26,8 @@
 
 #include <UTIL/LCTrackerConf.h>
 
+#include <TGeoManager.h>
+
 using namespace ACTSTracking;
 
 ACTSProcBase::ACTSProcBase(const std::string& procname)
@@ -35,6 +37,11 @@ ACTSProcBase::ACTSProcBase(const std::string& procname)
   registerProcessorParameter( "MatFile" ,
                               "Path to the material description json file",
 			      _matFile,
+			      std::string("")
+			      );
+  registerProcessorParameter( "TGeoFile" ,
+                              "Path to the tracker geometry file",
+			      _tgeoFile,
 			      std::string("")
 			      );
 }
@@ -67,7 +74,8 @@ const Acts::Surface* ACTSProcBase::findSurface(const EVENT::TrackerHit* hit) con
 void ACTSProcBase::init()
 {  
   // Parse parameters
-  _matFile = findFile(_matFile);
+  _matFile  = findFile(_matFile);
+  _tgeoFile = findFile(_tgeoFile);
 
   // Print the initial parameters
   printParameters() ;
@@ -116,6 +124,18 @@ void ACTSProcBase::buildDetector()
     matDeco = std::make_shared<const Acts::JsonMaterialDecorator>
       (jsonGeoConvConfig, _matFile, Acts::Logging::INFO);
   }
+
+  // Geometry
+  TGeoManager* gGeoManagerOld=nullptr;
+  if(!_tgeoFile.empty()) {
+    // Save current geometry. This is needed by all the other Processors
+    gGeoManagerOld=gGeoManager;
+    gGeoManager=nullptr; // prevents it from being deleted
+
+    // Load new geometry
+    TGeoManager::Import(_tgeoFile.c_str());
+  }
+
 
   // configure surface array creator
   Acts::SurfaceArrayCreator::Config sacConfig;
@@ -612,6 +632,12 @@ void ACTSProcBase::buildDetector()
     auto detElements = lBuilder->detectorElements();
     _detectorStore.insert(_detectorStore.begin(),
                           detElements.begin(), detElements.end());
+  }
+
+  //
+  // Restore old gGeoManager
+  if(gGeoManagerOld!=nullptr) {
+    gGeoManager=gGeoManagerOld;
   }
 }
 

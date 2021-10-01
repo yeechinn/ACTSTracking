@@ -223,6 +223,10 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <parameter name="MatFile" type="string">
       data/material-maps.json
     </parameter>
+    <!-- Path to tracking geometry -->
+    <parameter name="TGeoFile" type="string">
+      data/MuColl_v1.root
+    </parameter>
     <!-- Vol Layer, use -1 for all, ACTS numbers -->
     <parameter name="SeedingLayers" type="string">
       13 2
