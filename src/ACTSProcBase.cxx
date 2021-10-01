@@ -1,5 +1,7 @@
 #include "ACTSProcBase.hxx"
 
+#include "Helpers.hxx"
+
 #include <Acts/Definitions/Units.hpp>
 
 #include <Acts/Geometry/CylinderVolumeBuilder.hpp>
@@ -64,6 +66,9 @@ const Acts::Surface* ACTSProcBase::findSurface(const EVENT::TrackerHit* hit) con
 
 void ACTSProcBase::init()
 {  
+  // Parse parameters
+  _matFile = findFile(_matFile);
+
   // Print the initial parameters
   printParameters() ;
 

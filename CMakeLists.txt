@@ -41,6 +41,7 @@ ADD_SUBDIRECTORY(example)
 ### LIBRARY #################################################################
 
 # sources
+CONFIGURE_FILE(src/config.h.in config.h)
 ADD_LIBRARY(ACTSTracking SHARED
   ./src/ACTSProcBase.cxx
   ./src/ACTSTruthTrackingProc.cxx
@@ -52,7 +53,12 @@ ADD_LIBRARY(ACTSTracking SHARED
   ./src/GeometryIdMappingTool.cxx
   ./src/Helpers.cxx
   )
-TARGET_INCLUDE_DIRECTORIES(ACTSTracking PRIVATE ./ACTSTracking ${Marlin_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
+TARGET_INCLUDE_DIRECTORIES(ACTSTracking
+  PRIVATE
+    ./ACTSTracking
+    ${CMAKE_BINARY_DIR}
+    ${Marlin_INCLUDE_DIRS}
+    ${ROOT_INCLUDE_DIRS})
 TARGET_LINK_LIBRARIES(ACTSTracking
   ${ROOT_LIBRARIES} DD4hep::DDCore
   ActsCore ActsPluginTGeo ActsPluginJson)

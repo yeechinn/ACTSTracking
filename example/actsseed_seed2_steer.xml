@@ -221,7 +221,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
   <processor name="MyCKFTracking" type="ACTSSeedingProc">
     <!--Path to material description-->
     <parameter name="MatFile" type="string">
-      ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/ACTSTracking/ACTSTracking/data/material-maps.json
+      data/material-maps.json
     </parameter>
     <!-- Vol Layer, use -1 for all, ACTS numbers -->
     <!-- seed 2 -->
