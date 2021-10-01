@@ -24,6 +24,8 @@ FIND_PACKAGE( ROOT REQUIRED)
 
 FIND_PACKAGE( Acts REQUIRED COMPONENTS Core PluginJson PluginTGeo )
 
+INCLUDE(GNUInstallDirs)
+
 ### DOCUMENTATION ###########################################################
 
 OPTION( INSTALL_DOC "Set to OFF to skip build/install Documentation" OFF )
@@ -33,6 +35,7 @@ IF( INSTALL_DOC AND EXISTS "${PROJECT_SOURCE_DIR}/doc/CMakeLists.txt" )
 ENDIF()
 
 ### DATA ###########################################################
+ADD_SUBDIRECTORY(data)
 ADD_SUBDIRECTORY(example)
 
 ### LIBRARY #################################################################

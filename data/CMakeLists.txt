@@ -1,0 +1,2 @@
+INSTALL(FILES material-maps.json
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/ACTSTracking/data)
