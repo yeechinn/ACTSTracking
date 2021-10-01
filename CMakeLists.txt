@@ -45,8 +45,8 @@ CONFIGURE_FILE(src/config.h.in config.h)
 ADD_LIBRARY(ACTSTracking SHARED
   ./src/ACTSProcBase.cxx
   ./src/ACTSTruthTrackingProc.cxx
-  ./src/ACTSCKFTrackingProc.cxx
-  ./src/ACTSSeedingProc.cxx
+  ./src/ACTSTruthCKFTrackingProc.cxx
+  ./src/ACTSSeededCKFTrackingProc.cxx
   ./src/ACTSDuplicateRemoval.cxx
   ./src/TrackTruthProc.cxx
   ./src/GeometryIdSelector.cxx

@@ -215,7 +215,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
   <!-- ======================================================================================================== -->
 
   <!-- == TruthTrackFinder parameters == -->
-  <processor name="MyCKFTracking" type="ACTSCKFTrackingProc">
+  <processor name="MyCKFTracking" type="ACTSTruthCKFTrackingProc">
     <!-- Path to material description -->
     <parameter name="MatFile" type="string">
       data/material-maps.json

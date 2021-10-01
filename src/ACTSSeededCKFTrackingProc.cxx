@@ -1,4 +1,4 @@
-#include "ACTSSeedingProc.hxx"
+#include "ACTSSeededCKFTrackingProc.hxx"
 
 #include <IMPL/LCCollectionVec.h>
 #include <IMPL/LCFlagImpl.h>
@@ -52,12 +52,12 @@ using TrackFinderResult =
 using TrackFinderResultContainer =
   std::vector<TrackFinderResult>;
 
-ACTSSeedingProc aACTSSeedingProc;
+ACTSSeededCKFTrackingProc aACTSSeededCKFTrackingProc;
 
-ACTSSeedingProc::ACTSSeedingProc() : ACTSProcBase("ACTSSeedingProc")
+ACTSSeededCKFTrackingProc::ACTSSeededCKFTrackingProc() : ACTSProcBase("ACTSSeededCKFTrackingProc")
 {
   // modify processor description
-  _description = "Build and fit tracks out of all hits associated to an MC particle" ;
+  _description = "Fit tracks using the Combinatorial Kalman Filter algorithm with triplet seeding." ;
 
   // Settings
   registerProcessorParameter("RunCKF",
@@ -163,7 +163,7 @@ ACTSSeedingProc::ACTSSeedingProc() : ACTSProcBase("ACTSSeedingProc")
                             std::string("Tracks"));
 }
 
-void ACTSSeedingProc::init()
+void ACTSSeededCKFTrackingProc::init()
 {
   ACTSProcBase::init();
 	
@@ -194,10 +194,10 @@ void ACTSSeedingProc::init()
 }
 
 
-void ACTSSeedingProc::processRunHeader( LCRunHeader* )
+void ACTSSeededCKFTrackingProc::processRunHeader( LCRunHeader* )
 { }
 
-void ACTSSeedingProc::processEvent( LCEvent* evt )
+void ACTSSeededCKFTrackingProc::processEvent( LCEvent* evt )
 {
   //
   // Prepare the output
@@ -584,16 +584,16 @@ void ACTSSeedingProc::processEvent( LCEvent* evt )
   evt->addCollection( trackCollection , _outputTrackCollection ) ;
 }
 
-void ACTSSeedingProc::check( LCEvent* )
+void ACTSSeededCKFTrackingProc::check( LCEvent* )
 {
   // nothing to check here - could be used to fill checkplots in reconstruction processor
 }
 
 
-void ACTSSeedingProc::end()
+void ACTSSeededCKFTrackingProc::end()
 { }
 
-LCCollection* ACTSSeedingProc::getCollection(const std::string& collectionName, LCEvent* evt)
+LCCollection* ACTSSeededCKFTrackingProc::getCollection(const std::string& collectionName, LCEvent* evt)
 {
   try
   {

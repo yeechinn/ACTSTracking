@@ -1,5 +1,5 @@
-#ifndef ACTSSeedingProc_h
-#define ACTSSeedingProc_h 1
+#ifndef ACTSSeededCKFTrackingProc_h
+#define ACTSSeededCKFTrackingProc_h 1
 
 #include <EVENT/TrackerHit.h>
 
@@ -15,14 +15,14 @@
  * This code performs a true pattern recognition by looping over all MC particles and adding all hits
  * associated to them onto a prototrack. This is then fitted and output.
  */
-class ACTSSeedingProc : public ACTSProcBase
+class ACTSSeededCKFTrackingProc : public ACTSProcBase
 {		
  public:
-  virtual marlin::Processor*  newProcessor() { return new ACTSSeedingProc ; }
+  virtual marlin::Processor*  newProcessor() { return new ACTSSeededCKFTrackingProc ; }
 
-  ACTSSeedingProc(const ACTSSeedingProc &) = delete ;
-  ACTSSeedingProc& operator =(const ACTSSeedingProc &) = delete ;
-  ACTSSeedingProc() ;
+  ACTSSeededCKFTrackingProc(const ACTSSeededCKFTrackingProc &) = delete ;
+  ACTSSeededCKFTrackingProc& operator =(const ACTSSeededCKFTrackingProc &) = delete ;
+  ACTSSeededCKFTrackingProc() ;
 
   /** Called at the begin of the job before anything is read.
    * Use to initialize the processor, e.g. book histograms.

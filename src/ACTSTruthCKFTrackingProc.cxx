@@ -1,4 +1,4 @@
-#include "ACTSCKFTrackingProc.hxx"
+#include "ACTSTruthCKFTrackingProc.hxx"
 
 #include <IMPL/LCCollectionVec.h>
 #include <IMPL/LCFlagImpl.h>
@@ -43,12 +43,12 @@ using TrackFinderResult =
 using TrackFinderResultContainer =
     std::vector<TrackFinderResult>;
 
-ACTSCKFTrackingProc aACTSCKFTrackingProc;
+ACTSTruthCKFTrackingProc aACTSTruthCKFTrackingProc;
 
-ACTSCKFTrackingProc::ACTSCKFTrackingProc() : ACTSProcBase("ACTSCKFTrackingProc")
+ACTSTruthCKFTrackingProc::ACTSTruthCKFTrackingProc() : ACTSProcBase("ACTSTruthCKFTrackingProc")
 {
   // modify processor description
-  _description = "Build and fit tracks out of all hits associated to an MC particle" ;
+  _description = "Fit tracks using the Combinatorial Kalman Filter algorithm with MC particles as seeds." ;
 
   // CKF configuration
   registerProcessorParameter("CKF_Chi2CutOff",
@@ -82,7 +82,7 @@ ACTSCKFTrackingProc::ACTSCKFTrackingProc() : ACTSProcBase("ACTSCKFTrackingProc")
                             std::string("TruthTracks"));
 }
 
-void ACTSCKFTrackingProc::init()
+void ACTSTruthCKFTrackingProc::init()
 {
   ACTSProcBase::init();
 	
@@ -93,12 +93,12 @@ void ACTSCKFTrackingProc::init()
 }
 
 
-void ACTSCKFTrackingProc::processRunHeader( LCRunHeader* )
+void ACTSTruthCKFTrackingProc::processRunHeader( LCRunHeader* )
 {
   _runNumber++ ;
 }
 
-void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
+void ACTSTruthCKFTrackingProc::processEvent( LCEvent* evt )
 {
   // Construct a perigee surface as the target surface
   std::shared_ptr<Acts::PerigeeSurface> perigeeSurface = Acts::Surface::makeShared<Acts::PerigeeSurface>(
@@ -336,20 +336,20 @@ void ACTSCKFTrackingProc::processEvent( LCEvent* evt )
   _eventNumber++ ;
 }
 
-void ACTSCKFTrackingProc::check( LCEvent* )
+void ACTSTruthCKFTrackingProc::check( LCEvent* )
 {
   // nothing to check here - could be used to fill checkplots in reconstruction processor
 }
 
 
-void ACTSCKFTrackingProc::end()
+void ACTSTruthCKFTrackingProc::end()
 {
   streamlog_out(MESSAGE) << " end()  " << name()
                          << " processed " << _eventNumber << " events in " << _runNumber << " runs "
                          << std::endl ;
 }
 
-LCCollection* ACTSCKFTrackingProc::getCollection(const std::string& collectionName, LCEvent* evt)
+LCCollection* ACTSTruthCKFTrackingProc::getCollection(const std::string& collectionName, LCEvent* evt)
 {
   try
   {
