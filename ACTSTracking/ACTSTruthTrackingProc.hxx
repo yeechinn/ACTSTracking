@@ -66,7 +66,6 @@ class ACTSTruthTrackingProc : public ACTSProcBase
   std::vector<std::string> _inputTrackerHitRelationCollections ;
   std::string _inputParticleCollection ;
   std::string _outputTrackCollection ;
-  std::string _outputTrackRelationCollection;
 
   // Run and event counters
   uint32_t _eventNumber ;

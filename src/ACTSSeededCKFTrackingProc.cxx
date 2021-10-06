@@ -66,22 +66,22 @@ ACTSSeededCKFTrackingProc::ACTSSeededCKFTrackingProc() : ACTSProcBase("ACTSSeede
                              _runCKF);
 
   registerProcessorParameter("InitialTrackError_RelP",
-                             "Track error estimate, momentum component (relative)",
+                             "Track error estimate, momentum component (relative).",
                              _initialTrackError_relP,
                              0.25);
 
   registerProcessorParameter("InitialTrackError_Phi",
-                             "Track error estimate, phi (radians)",
+                             "Track error estimate, phi (radians).",
                              _initialTrackError_phi,
                              1_degree);
 
   registerProcessorParameter("InitialTrackError_Lambda",
-                             "Track error estimate, lambda (radians)",
+                             "Track error estimate, lambda (radians).",
                              _initialTrackError_lambda,
                              1_degree);
 
   registerProcessorParameter("InitialTrackError_Pos",
-                             "Track error estimate, local position (mm)",
+                             "Track error estimate, local position (mm).",
                              _initialTrackError_pos,
                              10_um);
 
@@ -145,14 +145,14 @@ ACTSSeededCKFTrackingProc::ACTSSeededCKFTrackingProc() : ACTSProcBase("ACTSSeede
   // Input collections - mc particles, tracker hits and the relationships between them
   registerInputCollections( LCIO::TRACKERHITPLANE,
                             "TrackerHitCollectionNames" ,
-                            "Name of the TrackerHit input collections",
+                            "Name of the TrackerHit input collections.",
                             _inputTrackerHitCollections ,
                             {} ) ;
 
   // Output collections - tracks and relations
   registerOutputCollection( LCIO::TRACK,
                             "SeedCollectionName",
-                            "Name of seed output collection",
+                            "Name of seed output collection.",
                             _outputSeedCollection,
                             std::string("SeedTracks"));
 
