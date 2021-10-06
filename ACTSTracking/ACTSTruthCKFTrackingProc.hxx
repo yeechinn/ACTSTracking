@@ -1,5 +1,5 @@
-#ifndef ACTSCKFTrackingProc_h
-#define ACTSCKFTrackingProc_h 1
+#ifndef ACTSTruthCKFTrackingProc_h
+#define ACTSTruthCKFTrackingProc_h 1
 
 #include <EVENT/TrackerHit.h>
 
@@ -13,14 +13,14 @@
  * This code performs a true pattern recognition by looping over all MC particles and adding all hits
  * associated to them onto a prototrack. This is then fitted and output.
  */
-class ACTSCKFTrackingProc : public ACTSProcBase
+class ACTSTruthCKFTrackingProc : public ACTSProcBase
 {		
  public:
-  virtual marlin::Processor*  newProcessor() { return new ACTSCKFTrackingProc ; }
+  virtual marlin::Processor*  newProcessor() { return new ACTSTruthCKFTrackingProc ; }
 
-  ACTSCKFTrackingProc(const ACTSCKFTrackingProc &) = delete ;
-  ACTSCKFTrackingProc& operator =(const ACTSCKFTrackingProc &) = delete ;
-  ACTSCKFTrackingProc() ;
+  ACTSTruthCKFTrackingProc(const ACTSTruthCKFTrackingProc &) = delete ;
+  ACTSTruthCKFTrackingProc& operator =(const ACTSTruthCKFTrackingProc &) = delete ;
+  ACTSTruthCKFTrackingProc() ;
 
   /** Called at the begin of the job before anything is read.
    * Use to initialize the processor, e.g. book histograms.

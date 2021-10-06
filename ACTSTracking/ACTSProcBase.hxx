@@ -63,7 +63,11 @@ class ACTSProcBase : public marlin::Processor
   void buildBfield();
 
  protected:
+  //! Path to material file
   std::string _matFile {};
+
+  //! Path to tracker geometry file
+  std::string _tgeoFile {};
 
   std::shared_ptr<ACTSTracking::GeometryIdMappingTool> geoIDMappingTool() const;
   

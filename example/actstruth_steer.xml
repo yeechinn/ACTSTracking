@@ -35,11 +35,8 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <processor name="MyTrackTruth"/>
 
     <!-- ==========  Output  ========== -->
-    <processor name="MergeSimHits" />
     <processor name="MergeHits" />
-    <processor name="MergeHitsRelations" />
-    <processor name="MyCreateTrackRelations" />
-    <processor name="MyLCParquet" />
+    <processor name="MyLCTuple" />
   </execute>
 
 
@@ -74,7 +71,7 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
 
   <processor name="MyAIDAProcessor" type="AIDAProcessor">
     <parameter name="FileName" type="string">
-      lctuple_actstracking
+      lctuple_actstruth
     </parameter>
     <parameter name="FileType" type="string">root</parameter>
   </processor>
@@ -217,11 +214,14 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
   <!-- ======================================================================================================== -->
 
   <!-- == TruthTrackFinder parameters == -->
-
   <processor name="MyTruthTracking" type="ACTSTruthTrackingProc">
     <!--Path to material description-->
     <parameter name="MatFile" type="string">
-      ${PROJECT_SOURCE_DIR}/data/material-maps.json
+      data/material-maps.json
+    </parameter>
+    <!-- Path to tracking geometry -->
+    <parameter name="TGeoFile" type="string">
+      data/MuColl_v1.root
     </parameter>
     <!--Define input tracker hits and relations. NB. Order must be respected -->
     <parameter name="TrackerHitCollectionNames" type="StringVec" lcioInType="TrackerHitPlane">
@@ -241,11 +241,9 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
       OETrackerHitsRelations
     </parameter>
     <!--Name of the MCParticle input collection-->
-    <parameter name="MCParticleCollectionName" type="string" lcioInType="MCParticle">MCParticle </parameter>
+    <parameter name="MCParticleCollectionName" type="string" lcioInType="MCParticle">MCParticle</parameter>
     <!--Silicon track Collection Name-->
-    <parameter name="TruthTrackCollectionName" type="string" lcioOutType="Track">TruthTracks</parameter>
-    <!--Silicon track particle relation Collection Name-->
-    <parameter name="TruthTrackRelationCollectionName" type="string" lcioOutType="LCRelation">TruthTrackRelations</parameter>
+    <parameter name="TrackCollectionName" type="string" lcioOutType="Track">Tracks</parameter>
   </processor>
 
   <!-- ======================================================================================================== -->
@@ -253,18 +251,6 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
   <!-- == LCTuple configuration                                                                              == -->
   <!-- ======================================================================================================== -->
   <!-- ======================================================================================================== -->
-
-  <processor name="MergeSimHits" type="MergeCollections">
-    <parameter name="InputCollections" type="StringVec">
-      VertexBarrelCollection
-      VertexEndcapCollection
-      InnerTrackerBarrelCollection
-      InnerTrackerEndcapCollection
-      OuterTrackerBarrelCollection
-      OuterTrackerEndcapCollection
-    </parameter>
-    <parameter name="OutputCollection" type="string"> SimHitsCollection </parameter>
-  </processor>
 
   <processor name="MergeHits" type="MergeCollections">
     <parameter name="InputCollections" type="StringVec">
@@ -278,25 +264,8 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
     <parameter name="OutputCollection" type="string"> HitsCollection </parameter>
   </processor>
 
-  <processor name="MergeHitsRelations" type="MergeCollections">
-    <parameter name="InputCollections" type="StringVec">
-      VBTrackerHitsRelations
-      IBTrackerHitsRelations
-      OBTrackerHitsRelations
-      VETrackerHitsRelations
-      IETrackerHitsRelations
-      OETrackerHitsRelations
-    </parameter>
-    <parameter name="OutputCollection" type="string"> TrackerHitsRelations </parameter>
-  </processor>
-
-  <processor name="MyCreateTrackRelations" type="CreateTrackRelations">
-    <parameter name="TrackCollection" type="string">TruthTracks</parameter>
-    <parameter name="Track2TrackerHitRelationName" type="string">TruthTracks_HitsRelation</parameter>
-  </processor>
-
   <processor name="MyTrackTruth" type="TrackTruthProc">
-    <parameter name="TrackCollection" type="string" lcioInType="Track">TruthTracks</parameter>
+    <parameter name="TrackCollection" type="string" lcioInType="Track">Tracks</parameter>
     <parameter name="MCParticleCollection" type="string" lcioInType="MCParticle">MCParticle</parameter>
     <parameter name="TrackerHit2SimTrackerHitRelationName" type="StringVec" lcioInType="LCRelation">
       VBTrackerHitsRelations
@@ -306,18 +275,17 @@ href="http://ilcsoft.desy.de/marlin/marlin.xsl"?
       IETrackerHitsRelations
       OETrackerHitsRelations
     </parameter>
-    <parameter name="Particle2TrackRelationName" type="string" lcioOutType="LCRelation">MCParticle_TruthTracks</parameter>
+    <parameter name="Particle2TrackRelationName" type="string" lcioOutType="LCRelation">MCParticle_Tracks</parameter>
   </processor>
 
-  <processor name="MyLCParquet" type="TrackPerfParquet">
-    <!--Location of sample output-->
-    <parameter name="OutputDir" type="string">data_acts</parameter>
+  <processor name="MyLCTuple" type="LCTuple">
     <!--Name of the MCParticle collection-->
     <parameter name="MCParticleCollection" type="string" lcioInType="MCParticle">MCParticle</parameter>
     <!--Name of the Track collection-->
-    <parameter name="TrackCollection" type="string" lcioInType="Track">TruthTracks</parameter>
+    <parameter name="TrackCollection" type="string" lcioInType="Track">Tracks</parameter>
     <!--Relations-->
-    <parameter name="MCTrackRelationCollection" type="string" lcioInType="LCRelation">MCParticle_TruthTracks</parameter>
+    <parameter name="LCRelationCollections" type="string" lcioInType="LCRelation">MCParticle_Tracks</parameter>
+    <parameter name="LCRelationPrefixes" type="string">mc2tr</parameter>
   </processor>
 
 </marlin>

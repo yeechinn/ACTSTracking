@@ -1,10 +1,38 @@
 #include "Helpers.hxx"
 
+#include "config.h"
+
 #include <IMPL/TrackStateImpl.h>
 #include <IMPL/TrackImpl.h>
 
+#include <filesystem>
+
 namespace ACTSTracking
 {
+
+std::string findFile(const std::string& inpath) {
+  if(inpath.empty()) return inpath;
+
+  // Already absolute path
+  if(inpath[0]=='/') return inpath;
+
+  // relative to cwd
+  if(std::filesystem::exists(inpath)) {
+    return inpath;
+  }
+
+  // relative to absolute paths
+  if(std::filesystem::exists(ACTSTRACKING_SOURCEDIR+inpath)) {
+    return ACTSTRACKING_SOURCEDIR+inpath;
+  }
+
+  if(std::filesystem::exists(ACTSTRACKING_DATADIR+inpath)) {
+    return ACTSTRACKING_DATADIR +inpath;
+  }
+
+  // nothing was found :(
+  return inpath;
+}
 
 EVENT::Track* ACTS2Marlin_track(const Acts::CombinatorialKalmanFilterResult<ACTSTracking::SourceLink>& fitOutput,
                                 std::size_t trackTip,

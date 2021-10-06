@@ -24,6 +24,8 @@ FIND_PACKAGE( ROOT REQUIRED)
 
 FIND_PACKAGE( Acts REQUIRED COMPONENTS Core PluginJson PluginTGeo )
 
+INCLUDE(GNUInstallDirs)
+
 ### DOCUMENTATION ###########################################################
 
 OPTION( INSTALL_DOC "Set to OFF to skip build/install Documentation" OFF )
@@ -33,23 +35,30 @@ IF( INSTALL_DOC AND EXISTS "${PROJECT_SOURCE_DIR}/doc/CMakeLists.txt" )
 ENDIF()
 
 ### DATA ###########################################################
+ADD_SUBDIRECTORY(data)
 ADD_SUBDIRECTORY(example)
 
 ### LIBRARY #################################################################
 
 # sources
+CONFIGURE_FILE(src/config.h.in config.h)
 ADD_LIBRARY(ACTSTracking SHARED
   ./src/ACTSProcBase.cxx
   ./src/ACTSTruthTrackingProc.cxx
-  ./src/ACTSCKFTrackingProc.cxx
-  ./src/ACTSSeedingProc.cxx
+  ./src/ACTSTruthCKFTrackingProc.cxx
+  ./src/ACTSSeededCKFTrackingProc.cxx
   ./src/ACTSDuplicateRemoval.cxx
   ./src/TrackTruthProc.cxx
   ./src/GeometryIdSelector.cxx
   ./src/GeometryIdMappingTool.cxx
   ./src/Helpers.cxx
   )
-TARGET_INCLUDE_DIRECTORIES(ACTSTracking PRIVATE ./ACTSTracking ${Marlin_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
+TARGET_INCLUDE_DIRECTORIES(ACTSTracking
+  PRIVATE
+    ./ACTSTracking
+    ${CMAKE_BINARY_DIR}
+    ${Marlin_INCLUDE_DIRS}
+    ${ROOT_INCLUDE_DIRS})
 TARGET_LINK_LIBRARIES(ACTSTracking
   ${ROOT_LIBRARIES} DD4hep::DDCore
   ActsCore ActsPluginTGeo ActsPluginJson)

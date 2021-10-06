@@ -16,6 +16,22 @@
 namespace ACTSTracking
 {
 
+//! Get path to a resource file
+/**
+ * Get absolute file of a file `inpath` by looking in the following places:
+ *  - `inpath` to the current working directory
+ *  - `ACTSTRACKING_SOURCEDIR/inpath`
+ *  - `ACTSTRACKING_DATADIR/inpath`
+ * 
+ * If the files is not found at any location, then `inpath` is returned.
+ * If `path` starts with a /, then it is returned directly.
+ *
+ * \parm inpath File to find.
+ * 
+ * \return Absolute path to file.
+ */
+std::string findFile(const std::string& inpath);
+
 //! Convert ACTS CKF result to LCIO track class
 /**
  * Converted propertie are:
