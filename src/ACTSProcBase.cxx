@@ -35,12 +35,12 @@ ACTSProcBase::ACTSProcBase(const std::string& procname)
 {
   // configuration
   registerProcessorParameter( "MatFile" ,
-                              "Path to the material description json file",
+                              "Path to the material description JSON file. Can be empty.",
 			      _matFile,
 			      std::string("")
 			      );
   registerProcessorParameter( "TGeoFile" ,
-                              "Path to the tracker geometry file",
+                              "Path to the tracker geometry file.",
 			      _tgeoFile,
 			      std::string("")
 			      );

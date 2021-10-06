@@ -64,20 +64,20 @@ ACTSTruthCKFTrackingProc::ACTSTruthCKFTrackingProc() : ACTSProcBase("ACTSTruthCK
   // Input collections - mc particles, tracker hits and the relationships between them
   registerInputCollections( LCIO::TRACKERHITPLANE,
                             "TrackerHitCollectionNames" ,
-                            "Name of the TrackerHit input collections",
+                            "Name of the TrackerHit input collections.",
                             _inputTrackerHitCollections ,
                             {} ) ;
 
   registerInputCollection( LCIO::MCPARTICLE,
                            "MCParticleCollectionName",
-                           "Name of the MCParticle input collection",
+                           "Name of the MCParticle input collection (used for seeding).",
                            _inputParticleCollection,
                            std::string("MCParticle"));
 
   // Output collections - tracks and relations
   registerOutputCollection( LCIO::TRACK,
                             "TrackCollectionName",
-                            "Name of track output collection",
+                            "Name of track output collection.",
                             _outputTrackCollection,
                             std::string("TruthTracks"));
 }

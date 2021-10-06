@@ -48,39 +48,33 @@ ACTSTruthTrackingProc aACTSTruthTrackingProc;
 ACTSTruthTrackingProc::ACTSTruthTrackingProc() : ACTSProcBase("ACTSTruthTrackingProc")
 {
   // modify processor description
-  _description = "Build and fit tracks out of all hits associated to an MC particle" ;
+  _description = "Build and fit tracks out of all hits associated to an MC particle." ;
 
   // Input collections - mc particles, tracker hits and the relationships between them
   registerInputCollections( LCIO::TRACKERHITPLANE,
                             "TrackerHitCollectionNames" ,
-                            "Name of the TrackerHit input collections",
+                            "Name of the TrackerHit input collections.",
                             _inputTrackerHitCollections ,
                             {} ) ;
 
   registerInputCollections( LCIO::LCRELATION,
                             "SimTrackerHitRelCollectionNames",
-                            "Name of TrackerHit SimTrackHit relation collections",
+                            "Name of TrackerHit to SimTrackerHit relation collections.",
                             _inputTrackerHitRelationCollections,
                             {} );
 
   registerInputCollection( LCIO::MCPARTICLE,
                            "MCParticleCollectionName",
-                           "Name of the MCParticle input collection",
+                           "Name of the MCParticle input collection.",
                            _inputParticleCollection,
                            std::string("MCParticle"));
 
   // Output collections - tracks and relations
   registerOutputCollection( LCIO::TRACK,
                             "TrackCollectionName",
-                            "Name of track output collection",
+                            "Name of track output collection.",
                             _outputTrackCollection,
                             std::string("TruthTracks"));
-
-  registerOutputCollection( LCIO::LCRELATION,
-                            "TrackRelationCollectionName",
-                            "Name of track to particle relation output collection",
-                            _outputTrackRelationCollection,
-                            std::string("TruthTrackRelations"));
 }
 
 void ACTSTruthTrackingProc::init()
@@ -365,8 +359,6 @@ void ACTSTruthTrackingProc::processEvent( LCEvent* evt )
 
   // Save the output track collection
   evt->addCollection( trackCollection , _outputTrackCollection ) ;
-  // Save the output particle to track relation collection
-  evt->addCollection( trackRelationCollection , _outputTrackRelationCollection ) ;
 
   // Increment the event number
   _eventNumber++ ;
