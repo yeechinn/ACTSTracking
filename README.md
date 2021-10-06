@@ -113,5 +113,5 @@ Processors to remove overlapping (sharing multiple hits) tracks. The algorithms 
 1. Sort input tracks by tan(lambda).
 2. Create final tracks container
 3. Compare each sorted input track against last 10 final tracks
-	a. Skip tracks not sharing more than 50% of hits. Shared fractions are defined as `shared hits / min(track 1 hits, track 2 hits)`
-	b. Replace final track if input track is of higher quality. Higher quality tracks has more hits. In case of same number of hits, the higher quality track has a smaller chi2.
+	1. Skip tracks not sharing more than 50% of hits. Shared fractions are defined as `shared hits / min(track 1 hits, track 2 hits)`
+	2. Replace final track if input track is of higher quality. Higher quality tracks has more hits. In case of same number of hits, the higher quality track has a smaller chi2.
