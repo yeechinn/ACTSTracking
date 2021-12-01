@@ -239,6 +239,7 @@ void ACTSProcBase::buildDetector()
       lConfig.volumeName = "VertexEndcap*";
       lConfig.sensorNames = {"sensor*"};
       lConfig.localAxes = "xZy";
+      lConfig.envelope = std::pair<double, double>(0.1 * Acts::UnitConstants::mm, 0.1 * Acts::UnitConstants::mm);
 
       // Fill the parsing restrictions in r
       lConfig.parseRanges.push_back({Acts::binR, {0, 120}});
@@ -259,6 +260,7 @@ void ACTSProcBase::buildDetector()
       lConfig.volumeName = "VertexBarrel*";
       lConfig.sensorNames = {"VertexBarrel_layer*_sens"};
       lConfig.localAxes = "YZX";
+      lConfig.envelope = std::pair<double, double>(0.1 * Acts::UnitConstants::mm, 0.1 * Acts::UnitConstants::mm);
 
       // Fill the parsing restrictions in r
       lConfig.parseRanges.push_back({Acts::binR, {0, 120}});
@@ -279,6 +281,7 @@ void ACTSProcBase::buildDetector()
       lConfig.volumeName = "VertexEndcap*";
       lConfig.sensorNames = {"sensor*"};
       lConfig.localAxes = "xZy";
+      lConfig.envelope = std::pair<double, double>(0.1 * Acts::UnitConstants::mm, 0.1 * Acts::UnitConstants::mm);
 
       // Fill the parsing restrictions in r
       lConfig.parseRanges.push_back({Acts::binR, {0, 120}});
