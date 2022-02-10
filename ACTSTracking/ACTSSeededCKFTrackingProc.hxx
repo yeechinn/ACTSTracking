@@ -10,57 +10,55 @@
 #include "ACTSProcBase.hxx"
 #include "GeometryIdSelector.hxx"
 
-
 /**
  * This code performs a true pattern recognition by looping over all MC particles and adding all hits
  * associated to them onto a prototrack. This is then fitted and output.
  */
 class ACTSSeededCKFTrackingProc : public ACTSProcBase
-{		
- public:
-  virtual marlin::Processor*  newProcessor() { return new ACTSSeededCKFTrackingProc ; }
+{
+public:
+  virtual marlin::Processor *newProcessor() { return new ACTSSeededCKFTrackingProc; }
 
-  ACTSSeededCKFTrackingProc(const ACTSSeededCKFTrackingProc &) = delete ;
-  ACTSSeededCKFTrackingProc& operator =(const ACTSSeededCKFTrackingProc &) = delete ;
-  ACTSSeededCKFTrackingProc() ;
+  ACTSSeededCKFTrackingProc(const ACTSSeededCKFTrackingProc &) = delete;
+  ACTSSeededCKFTrackingProc &operator=(const ACTSSeededCKFTrackingProc &) = delete;
+  ACTSSeededCKFTrackingProc();
 
   /** Called at the begin of the job before anything is read.
    * Use to initialize the processor, e.g. book histograms.
    */
-  virtual void init() ;
-	
+  virtual void init();
+
   /** Called for every run.
    */
-  virtual void processRunHeader( LCRunHeader* run ) ;
-	
+  virtual void processRunHeader(LCRunHeader *run);
+
   /** Called for every event - the working horse.
    */
-  virtual void processEvent( LCEvent * evt ) ;
+  virtual void processEvent(LCEvent *evt);
 
-  virtual void check( LCEvent * evt ) ;
+  virtual void check(LCEvent *evt);
 
   /** Called after data processing for clean up.
    */
-  virtual void end() ;
+  virtual void end();
 
- private:
+private:
   /** Call to get collections
    */
-  LCCollection* getCollection(const std::string&, LCEvent*);	
+  LCCollection *getCollection(const std::string &, LCEvent *);
 
- protected:
-
+protected:
   // Collection names for (in/out)put
-  std::vector<std::string> _inputTrackerHitCollections ;
-  std::string _outputSeedCollection ;
-  std::string _outputTrackCollection ;
+  std::vector<std::string> _inputTrackerHitCollections;
+  std::string _outputSeedCollection;
+  std::string _outputTrackCollection;
 
   // Run settings
-  bool _runCKF=true;
+  bool _runCKF = true;
 
   // Seed finding configuration
   float _seedFinding_rMax = 150;
-  float _seedFinding_deltaRMin =  5;
+  float _seedFinding_deltaRMin = 5;
   float _seedFinding_deltaRMax = 80;
   float _seedFinding_collisionRegion = 75;
   float _seedFinding_zMax = 600;
@@ -69,23 +67,22 @@ class ACTSSeededCKFTrackingProc : public ACTSProcBase
   float _seedFinding_minPt = 500;
 
   // Track fit parameters
-  double _initialTrackError_pos    ;
-  double _initialTrackError_phi    ;
-  double _initialTrackError_relP   ;
-  double _initialTrackError_lambda ;
-  double _initialTrackError_time   = 100 *Acts::UnitConstants::ns; // No Marlin default
+  double _initialTrackError_pos;
+  double _initialTrackError_phi;
+  double _initialTrackError_relP;
+  double _initialTrackError_lambda;
+  double _initialTrackError_time = 100 * Acts::UnitConstants::ns; // No Marlin default
 
-  double  _CKF_chi2CutOff            =15;
-  int32_t _CKF_numMeasurementsCutOff =10;
+  double _CKF_chi2CutOff = 15;
+  int32_t _CKF_numMeasurementsCutOff = 10;
+  double _CKF_d0CutOff = 3;
 
   // Seeding configuration
-  std::vector<std::string> _seedingLayers;
+  std::vector<std::string>
+      _seedingLayers;
   ACTSTracking::GeometryIdSelector _seedGeometrySelection;
 
-  uint32_t _fitFails;		
+  uint32_t _fitFails;
 };
 
 #endif
-
-
-
