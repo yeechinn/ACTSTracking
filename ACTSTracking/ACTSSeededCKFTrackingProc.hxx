@@ -65,6 +65,7 @@ protected:
   float _seedFinding_sigmaScattering = 50;
   float _seedFinding_radLengthPerSeed = 0.1;
   float _seedFinding_minPt = 500;
+  float _seedFinding_impactMax = 3 * Acts::UnitConstants::mm;
 
   // Track fit parameters
   double _initialTrackError_pos;
@@ -75,7 +76,6 @@ protected:
 
   double _CKF_chi2CutOff = 15;
   int32_t _CKF_numMeasurementsCutOff = 10;
-  double _CKF_d0CutOff = 3;
 
   // Seeding configuration
   std::vector<std::string>

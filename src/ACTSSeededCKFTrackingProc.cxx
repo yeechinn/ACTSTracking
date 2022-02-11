@@ -131,6 +131,11 @@ ACTSSeededCKFTrackingProc::ACTSSeededCKFTrackingProc() : ACTSProcBase("ACTSSeede
                              _seedFinding_minPt,
                              _seedFinding_minPt);
 
+  registerProcessorParameter("SeedFinding_impactMax",
+                             "Maximum d0 of tracks to seed.",
+                             _seedFinding_impactMax,
+                             _seedFinding_impactMax);
+
   // CKF configuration
   registerProcessorParameter("CKF_Chi2CutOff",
                              "Maximum local chi2 contribution.",
@@ -141,11 +146,6 @@ ACTSSeededCKFTrackingProc::ACTSSeededCKFTrackingProc() : ACTSProcBase("ACTSSeede
                              "Maximum number of associated measurements on a single surface.",
                              _CKF_numMeasurementsCutOff,
                              _CKF_numMeasurementsCutOff);
-
-  registerProcessorParameter("CKF_d0CutOff",
-                             "Maximum d0.",
-                             _CKF_d0CutOff,
-                             _CKF_d0CutOff);
 
   // Input collections - mc particles, tracker hits and the relationships between them
   registerInputCollections(LCIO::TRACKERHITPLANE,
@@ -405,7 +405,7 @@ void ACTSSeededCKFTrackingProc::processEvent(LCEvent *evt)
   finderCfg.minPt = _seedFinding_minPt * Acts::UnitConstants::MeV;
   finderCfg.bFieldInZ = (*magneticField()->getField(zeropos, magCache))[2];
   finderCfg.beamPos = {0, 0};
-  finderCfg.impactMax = _CKF_d0CutOff;
+  finderCfg.impactMax = _seedFinding_impactMax * Acts::UnitConstants::mm;
 
   Acts::SpacePointGridConfig gridCfg;
   gridCfg.bFieldInZ = finderCfg.bFieldInZ;
