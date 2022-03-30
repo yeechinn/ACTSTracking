@@ -55,6 +55,7 @@ protected:
 
   // Run settings
   bool _runCKF = true;
+  bool _propagateBackward = false;
 
   // Seed finding configuration
   float _seedFinding_rMax = 150;
@@ -66,7 +67,6 @@ protected:
   float _seedFinding_radLengthPerSeed = 0.1;
   float _seedFinding_minPt = 500;
   float _seedFinding_impactMax = 3 * Acts::UnitConstants::mm;
-  bool _propagateBackward = false;
 
   // Track fit parameters
   double _initialTrackError_pos;
