@@ -131,10 +131,15 @@ ACTSSeededCKFTrackingProc::ACTSSeededCKFTrackingProc() : ACTSProcBase("ACTSSeede
                              _seedFinding_minPt,
                              _seedFinding_minPt);
 
-  registerProcessorParameter("SeedFinding_impactMax",
+  registerProcessorParameter("SeedFinding_ImpactMax",
                              "Maximum d0 of tracks to seed.",
                              _seedFinding_impactMax,
                              _seedFinding_impactMax);
+
+  registerProcessorParameter("PropagateBackward",
+                             "Extrapolates tracks towards beamline.",
+                             _propagateBackward,
+                             _propagateBackward);
 
   // CKF configuration
   registerProcessorParameter("CKF_Chi2CutOff",
@@ -371,6 +376,10 @@ void ACTSSeededCKFTrackingProc::processEvent(LCEvent *evt)
 
   Acts::PropagatorPlainOptions pOptions;
   pOptions.maxSteps = 10000;
+  if (_propagateBackward)
+  {
+    pOptions.direction = Acts::backward;
+  }
 
   // Construct a perigee surface as the target surface
   std::shared_ptr<Acts::PerigeeSurface> perigeeSurface = Acts::Surface::makeShared<Acts::PerigeeSurface>(

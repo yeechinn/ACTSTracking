@@ -66,6 +66,7 @@ protected:
   float _seedFinding_radLengthPerSeed = 0.1;
   float _seedFinding_minPt = 500;
   float _seedFinding_impactMax = 3 * Acts::UnitConstants::mm;
+  bool _propagateBackward = false;
 
   // Track fit parameters
   double _initialTrackError_pos;
