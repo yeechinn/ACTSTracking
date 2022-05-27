@@ -4,16 +4,14 @@
 
 #include "SourceLink.hxx"
 
-namespace ACTSTracking
-{
+namespace ACTSTracking {
 //! Hit stored as an measurement
 using Measurement = Acts::BoundVariantMeasurement<ACTSTracking::SourceLink>;
 
 //! Collection of measurements
 using MeasurementContainer = std::vector<Measurement>;
 
-class MeasurementCalibrator
-{
+class MeasurementCalibrator {
  public:
   /// Construct an invalid calibrator. Required to allow copying.
   MeasurementCalibrator() = default;
@@ -29,14 +27,12 @@ class MeasurementCalibrator
    */
   template <typename parameters_t>
   const Measurement& operator()(const SourceLink& sourceLink,
-                                const parameters_t& /* parameters */) const
-  {
+                                const parameters_t& /* parameters */) const {
     assert(m_measurements and
            "Undefined measurement container in DigitizedCalibrator");
     assert((sourceLink.index() < m_measurements->size()) and
            "Source link index is outside the container bounds");
     return (*m_measurements)[sourceLink.index()];
-
   }
 
  private:
@@ -44,4 +40,4 @@ class MeasurementCalibrator
   const MeasurementContainer* m_measurements = nullptr;
 };
 
-}
+}  // namespace ACTSTracking

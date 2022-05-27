@@ -1,26 +1,23 @@
 #pragma once
 
-#include <unordered_map>
+#include <UTIL/CellIDDecoder.h>
 
 #include <EVENT/SimTrackerHit.h>
 #include <EVENT/TrackerHit.h>
+#include <unordered_map>
 
-#include <UTIL/CellIDDecoder.h>
-
-namespace ACTSTracking
-{
+namespace ACTSTracking {
 
 //! \brief Maps DD4hep cell ID's to ACTS geometry ID's
 /**
  * Lots of hardcoded values that match up to mod5 geometry
  * dumped to TGeo.
- * 
+ *
  * @author Karol Krizka
  * @version $Id$
  */
-class GeometryIdMappingTool
-{
-public:
+class GeometryIdMappingTool {
+ public:
   /** Create a mapping tool using the provided encoderString to
    * interpret cell ID's.
    */
@@ -31,9 +28,10 @@ public:
   uint64_t getGeometryID(const lcio::SimTrackerHit* hit);
   uint64_t getGeometryID(const lcio::TrackerHit* hit);
 
-  uint64_t getGeometryID(uint32_t systemID, uint32_t layerID, int32_t sideID, uint32_t ladderID, uint32_t moduleID);
-  
-private:
+  uint64_t getGeometryID(uint32_t systemID, uint32_t layerID, int32_t sideID,
+                         uint32_t ladderID, uint32_t moduleID);
+
+ private:
   std::string _encoderString;
 
   static const std::unordered_map<int32_t, uint32_t> VolumeMap;
@@ -54,15 +52,16 @@ private:
   // Modules in phi ladder per layer
   static const std::unordered_map<uint32_t, uint32_t> NLad_VertexBarrel;
   static const std::unordered_map<uint32_t, uint32_t> NLad_InnerTrackerBarrel;
-  static const std::unordered_map<uint32_t, uint32_t> NLad_OuterInnerTrackerBarrel;
+  static const std::unordered_map<uint32_t, uint32_t>
+      NLad_OuterInnerTrackerBarrel;
   static const std::unordered_map<uint32_t, uint32_t> NLad_OuterTrackerBarrel;
 
   // Modules in ring per layer
   static const std::unordered_map<uint32_t, uint32_t> NRng_VertexEndCap;
   static const std::unordered_map<uint32_t, uint32_t> NRng_InnerTrackerEndCap;
-  static const std::unordered_map<uint32_t, uint32_t> NRng_OuterInnerTrackerEndCap;
+  static const std::unordered_map<uint32_t, uint32_t>
+      NRng_OuterInnerTrackerEndCap;
   static const std::unordered_map<uint32_t, uint32_t> NRng_OuterTrackerEndCap;
-
 };
 
-}
+}  // namespace ACTSTracking
