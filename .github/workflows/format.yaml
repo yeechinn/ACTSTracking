@@ -3,13 +3,17 @@ name: test-clang-format
 on: [push]
 
 jobs:
-  build:
+  format:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        path:
+          - 'src'
+          - 'ACTSTracking'
     steps:
       - uses: actions/checkout@v2
       - uses: DoozyX/clang-format-lint-action@v0.13
         with:
-          source: 'src,ACTSTracking'
-          extensions: 'h,cpp'
+          source: ${{ matrix.path }}
           clangFormatVersion: 13
 
