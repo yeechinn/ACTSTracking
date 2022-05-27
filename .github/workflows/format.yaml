@@ -9,7 +9,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: DoozyX/clang-format-lint-action@v0.13
         with:
-          source: '.'
+          source: 'src,ACTSTracking'
           extensions: 'h,cpp'
           clangFormatVersion: 13
 
