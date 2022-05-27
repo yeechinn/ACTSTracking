@@ -2,18 +2,15 @@
 
 #include <Acts/Definitions/Algebra.hpp>
 #include <Acts/Definitions/Common.hpp>
-
 #include <cmath>
 #include <vector>
 
-namespace ACTSTracking
-{
+namespace ACTSTracking {
 //! Space point representation of a measurement suitable for track seeding.
 /**
  * Based on ACTS' `ActsExamples::SimSpacePoint`.
  */
-class SeedSpacePoint
-{
+class SeedSpacePoint {
  public:
   /// Construct the space point from global position and selected variances.
   ///
@@ -24,17 +21,15 @@ class SeedSpacePoint
   // \param sourceLink Link to the original measurement
   //
   template <typename position_t>
-  SeedSpacePoint(const Eigen::MatrixBase<position_t>& pos,
-		 float varRho, float varZ,
-		 const SourceLink& sourceLink)
+  SeedSpacePoint(const Eigen::MatrixBase<position_t>& pos, float varRho,
+                 float varZ, const SourceLink& sourceLink)
       : m_x(pos[Acts::ePos0]),
         m_y(pos[Acts::ePos1]),
         m_z(pos[Acts::ePos2]),
         m_rho(std::hypot(m_x, m_y)),
         m_varianceRho(varRho),
         m_varianceZ(varZ),
-        m_sourceLink(sourceLink)
-  {
+        m_sourceLink(sourceLink) {
     EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(position_t, 3);
   }
 
@@ -60,18 +55,18 @@ class SeedSpacePoint
   SourceLink m_sourceLink;
 };
 
-constexpr bool operator==(const SeedSpacePoint& lhs, const SeedSpacePoint& rhs)
-{
+constexpr bool operator==(const SeedSpacePoint& lhs,
+                          const SeedSpacePoint& rhs) {
   // TODO would it be sufficient to check just the index under the assumption
   //   that the same measurement index always produces the same space point?
   // no need to check r since it is fully defined by x/y
-  return (lhs.sourceLink() == rhs.sourceLink()) and
-      (lhs.x() == rhs.x()) and (lhs.y() == rhs.y()) and
-      (lhs.z() == rhs.z()) and (lhs.varianceR() == rhs.varianceR()) and
-      (lhs.varianceZ() == rhs.varianceZ());
+  return (lhs.sourceLink() == rhs.sourceLink()) and (lhs.x() == rhs.x()) and
+         (lhs.y() == rhs.y()) and (lhs.z() == rhs.z()) and
+         (lhs.varianceR() == rhs.varianceR()) and
+         (lhs.varianceZ() == rhs.varianceZ());
 }
 
 /// Container of space points.
 using SeedSpacePointContainer = std::vector<SeedSpacePoint>;
 
-}  // namespace ActsExamples
+}  // namespace ACTSTracking
