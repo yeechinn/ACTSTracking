@@ -2,6 +2,7 @@
 #define ACTSDuplicateRemoval_h 1
 
 #include <EVENT/Track.h>
+
 #include <marlin/Processor.h>
 
 //! \brief Remove track duplicates

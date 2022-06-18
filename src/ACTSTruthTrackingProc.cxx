@@ -1,5 +1,14 @@
 #include "ACTSTruthTrackingProc.hxx"
 
+#include <EVENT/MCParticle.h>
+#include <EVENT/SimTrackerHit.h>
+
+#include <IMPL/LCCollectionVec.h>
+#include <IMPL/LCFlagImpl.h>
+#include <IMPL/LCRelationImpl.h>
+#include <IMPL/TrackImpl.h>
+#include <IMPL/TrackerHitPlaneImpl.h>
+
 #include <UTIL/LCRelationNavigator.h>
 #include <UTIL/LCTrackerConf.h>
 
@@ -9,13 +18,6 @@
 #include <Acts/TrackFitting/GainMatrixSmoother.hpp>
 #include <Acts/TrackFitting/GainMatrixUpdater.hpp>
 #include <Acts/TrackFitting/KalmanFitter.hpp>
-#include <EVENT/MCParticle.h>
-#include <EVENT/SimTrackerHit.h>
-#include <IMPL/LCCollectionVec.h>
-#include <IMPL/LCFlagImpl.h>
-#include <IMPL/LCRelationImpl.h>
-#include <IMPL/TrackImpl.h>
-#include <IMPL/TrackerHitPlaneImpl.h>
 
 using namespace Acts::UnitLiterals;
 

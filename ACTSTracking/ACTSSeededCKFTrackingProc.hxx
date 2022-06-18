@@ -1,10 +1,11 @@
 #ifndef ACTSSeededCKFTrackingProc_h
 #define ACTSSeededCKFTrackingProc_h 1
 
+#include <EVENT/TrackerHit.h>
+
 #include <UTIL/CellIDDecoder.h>
 
 #include <Acts/Definitions/Units.hpp>
-#include <EVENT/TrackerHit.h>
 
 #include "ACTSProcBase.hxx"
 #include "GeometryIdSelector.hxx"

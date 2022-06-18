@@ -1,9 +1,10 @@
 #pragma once
 
-#include <UTIL/CellIDDecoder.h>
-
 #include <EVENT/SimTrackerHit.h>
 #include <EVENT/TrackerHit.h>
+
+#include <UTIL/CellIDDecoder.h>
+
 #include <unordered_map>
 
 namespace ACTSTracking {
