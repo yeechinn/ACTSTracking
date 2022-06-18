@@ -1,10 +1,11 @@
 #include "Helpers.hxx"
 
+#include <IMPL/TrackImpl.h>
+#include <IMPL/TrackStateImpl.h>
 
 #include <UTIL/CellIDDecoder.h>
 #include <UTIL/LCTrackerConf.h>
-#include <IMPL/TrackImpl.h>
-#include <IMPL/TrackStateImpl.h>
+
 #include <filesystem>
 
 #include "config.h"
@@ -107,14 +108,15 @@ EVENT::Track* ACTS2Marlin_track(
   std::reverse(statesOnTrack.begin(), statesOnTrack.end());
 
   // Save hits
-  UTIL::CellIDDecoder<lcio::TrackerHit> decoder(lcio::LCTrackerCellID::encoding_string());
+  UTIL::CellIDDecoder<lcio::TrackerHit> decoder(
+      lcio::LCTrackerCellID::encoding_string());
   EVENT::IntVec& subdetectorHitNumbers = track->subdetectorHitNumbers();
   for (EVENT::TrackerHit* hit : hitsOnTrack) {
     track->addHit(hit);
 
-    uint32_t sysid=decoder(hit)["system"];
-    if(subdetectorHitNumbers.size() <= sysid) {
-      subdetectorHitNumbers.resize(sysid+1,0);
+    uint32_t sysid = decoder(hit)["system"];
+    if (subdetectorHitNumbers.size() <= sysid) {
+      subdetectorHitNumbers.resize(sysid + 1, 0);
     }
     subdetectorHitNumbers[sysid]++;
   }

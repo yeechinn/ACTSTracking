@@ -1,11 +1,12 @@
 #include "TrackTruthProc.hxx"
 
-#include <UTIL/LCRelationNavigator.h>
-
 #include <EVENT/MCParticle.h>
 #include <EVENT/SimTrackerHit.h>
 #include <EVENT/Track.h>
+
 #include <IMPL/LCCollectionVec.h>
+
+#include <UTIL/LCRelationNavigator.h>
 
 #include "Helpers.hxx"
 

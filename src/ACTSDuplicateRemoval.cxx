@@ -1,8 +1,10 @@
 #include "ACTSDuplicateRemoval.hxx"
 
 #include <EVENT/LCCollection.h>
+
 #include <IMPL/LCCollectionVec.h>
 #include <IMPL/LCFlagImpl.h>
+
 #include <algorithm>
 
 namespace ACTSTracking {

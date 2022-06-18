@@ -1,12 +1,13 @@
 #pragma once
 
+#include <EVENT/LCEvent.h>
+#include <EVENT/Track.h>
+#include <EVENT/TrackState.h>
+
 #include <Acts/EventData/TrackParameters.hpp>
 #include <Acts/MagneticField/MagneticFieldProvider.hpp>
 #include <Acts/TrackFinding/CombinatorialKalmanFilter.hpp>
 #include <Acts/TrackFitting/KalmanFitter.hpp>
-#include <EVENT/LCEvent.h>
-#include <EVENT/Track.h>
-#include <EVENT/TrackState.h>
 
 #include "SourceLink.hxx"
 
