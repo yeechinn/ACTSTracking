@@ -18,8 +18,8 @@
 #include <Acts/Propagator/Propagator.hpp>
 #include <Acts/Seeding/BinFinder.hpp>
 #include <Acts/Seeding/BinnedSPGroup.hpp>
-#include <Acts/Seeding/EstimateTrackParamsFromSeed.hpp>
-#include <Acts/Seeding/Seedfinder.hpp>
+#include <LUXEEstimateTrackParamsFromSeed.hpp>
+#include <LUXESeedfinder.hpp>
 #include <Acts/Seeding/SpacePointGrid.hpp>
 #include <Acts/Surfaces/PerigeeSurface.hpp>
 #include <Acts/TrackFinding/CombinatorialKalmanFilter.hpp>

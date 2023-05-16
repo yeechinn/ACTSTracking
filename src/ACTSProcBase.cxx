@@ -103,9 +103,9 @@ void ACTSProcBase::end() {}
 
 void ACTSProcBase::buildDetector() {
   // Logging
-  Acts::Logging::Level surfaceLogLevel = Acts::Logging::INFO;
-  Acts::Logging::Level layerLogLevel = Acts::Logging::INFO;
-  Acts::Logging::Level volumeLogLevel = Acts::Logging::INFO;
+  Acts::Logging::Level surfaceLogLevel = Acts::Logging::VERBOSE;//INFO;
+  Acts::Logging::Level layerLogLevel = Acts::Logging::VERBOSE;//INFO;
+  Acts::Logging::Level volumeLogLevel = Acts::Logging::VERBOSE;//INFO;
 
   // Material description
   std::shared_ptr<const Acts::IMaterialDecorator> matDeco = nullptr;
@@ -114,7 +114,7 @@ void ACTSProcBase::buildDetector() {
     Acts::MaterialMapJsonConverter::Config jsonGeoConvConfig;
     // Set up the json-based decorator
     matDeco = std::make_shared<const Acts::JsonMaterialDecorator>(
-        jsonGeoConvConfig, _matFile, Acts::Logging::INFO);
+        jsonGeoConvConfig, _matFile, Acts::Logging::VERBOSE);//INFO);
   }
 
   // Geometry
@@ -209,7 +209,7 @@ void ACTSProcBase::buildDetector() {
   std::vector<Acts::TGeoLayerBuilder::Config> layerBuilderConfigs;
 
   // TODO: Make this configurable from a file
-  {  // Vertex
+/*  {  // Vertex
     Acts::TGeoLayerBuilder::Config layerBuilderConfig;
     layerBuilderConfig.configurationName = "Vertex";
     layerBuilderConfig.unit = 1 * Acts::UnitConstants::cm;
@@ -524,6 +524,25 @@ void ACTSProcBase::buildDetector() {
       layerBuilderConfig.layerConfigurations[2].push_back(lConfig);
     }
 
+    // Save
+    layerBuilderConfigs.push_back(layerBuilderConfig);
+  }
+*/
+  {  // LUXETracker
+    Acts::TGeoLayerBuilder::Config layerBuilderConfig;
+    layerBuilderConfig.configurationName = "LUXETrackerEndcap";
+    {
+      // Create the layer config object and fill it
+      Acts::TGeoLayerBuilder::LayerConfig lConfig;
+      lConfig.volumeName = "LUXETrackerEndcap*";
+      lConfig.sensorNames = {"*sensor*"};
+      lConfig.localAxes = "XYZ";
+      lConfig.parseRanges.push_back({Acts::binX, {0, 600}});
+      lConfig.parseRanges.push_back({Acts::binZ, {3900, 4300}});
+      lConfig.splitConfigs.push_back({Acts::binZ, 10});
+      // Save
+      layerBuilderConfig.layerConfigurations[2].push_back(lConfig);
+    }
     // Save
     layerBuilderConfigs.push_back(layerBuilderConfig);
   }

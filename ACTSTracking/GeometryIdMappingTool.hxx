@@ -35,34 +35,6 @@ class GeometryIdMappingTool {
  private:
   std::string _encoderString;
 
-  static const std::unordered_map<int32_t, uint32_t> VolumeMap;
-
-  static const int32_t VertexEndCapNegative;
-  static const int32_t VertexBarrel;
-  static const int32_t VertexEndCapPositive;
-  static const int32_t InnerTrackerEndCapNegative;
-  static const int32_t InnerTrackerBarrel;
-  static const int32_t InnerTrackerEndCapPositive;
-  static const int32_t OuterInnerTrackerEndCapNegative;
-  static const int32_t OuterInnerTrackerBarrel;
-  static const int32_t OuterInnerTrackerEndCapPositive;
-  static const int32_t OuterTrackerEndCapNegative;
-  static const int32_t OuterTrackerBarrel;
-  static const int32_t OuterTrackerEndCapPositive;
-
-  // Modules in phi ladder per layer
-  static const std::unordered_map<uint32_t, uint32_t> NLad_VertexBarrel;
-  static const std::unordered_map<uint32_t, uint32_t> NLad_InnerTrackerBarrel;
-  static const std::unordered_map<uint32_t, uint32_t>
-      NLad_OuterInnerTrackerBarrel;
-  static const std::unordered_map<uint32_t, uint32_t> NLad_OuterTrackerBarrel;
-
-  // Modules in ring per layer
-  static const std::unordered_map<uint32_t, uint32_t> NRng_VertexEndCap;
-  static const std::unordered_map<uint32_t, uint32_t> NRng_InnerTrackerEndCap;
-  static const std::unordered_map<uint32_t, uint32_t>
-      NRng_OuterInnerTrackerEndCap;
-  static const std::unordered_map<uint32_t, uint32_t> NRng_OuterTrackerEndCap;
 };
 
 }  // namespace ACTSTracking
