@@ -39,13 +39,11 @@ uint64_t GeometryIdMappingTool::getGeometryID(uint32_t systemID,
   geometry_id |= volume_id << (14 * 4);
 
   uint64_t layer_id;
-  layer_id = 2 * layerID + 2;
+  layer_id = layerID%2==0?layerID+2:layerID+1;
   geometry_id |= layer_id << (9 * 4);
 
   uint64_t sensitive_id;
-  uint64_t NRng = 1;
-  sensitive_id =
-      NRng * ladderID + moduleID + 1;
+  sensitive_id = layerID%2==0?ladderID+1:ladderID+10;
   geometry_id |= sensitive_id << (0 * 4);
   return geometry_id;
 }

@@ -244,6 +244,7 @@ void ACTSSeededCKFTrackingProc::processEvent(LCEvent *evt) {
                                lcioglobalpos[2]};
     Acts::Result<Acts::Vector2> lpResult =
         surface->globalToLocal(geometryContext(), globalPos, {0, 0, 0}, 0.5_um);
+std::cout << surface << " " << trackingGeometry() << " " << globalPos[0] << " " << globalPos[2] << " " << hit.first << std::endl;
     if (!lpResult.ok())
       throw std::runtime_error(
           "Global to local transformation did not succeed.");
@@ -443,14 +444,14 @@ void ACTSSeededCKFTrackingProc::processEvent(LCEvent *evt) {
       spacePointsGrouping.begin();
   Acts::BinnedSPGroupIterator<ACTSTracking::SeedSpacePoint> groupEnd =
       spacePointsGrouping.end();
+  seeds.clear();
   for (; !(group == groupEnd); ++group) {
     //
     // Run seeding
-    seeds.clear();
 
     finder.createSeedsForGroup(state, std::back_inserter(seeds), group.bottom(),
                                group.middle(), group.top());
-
+  }
     //
     // Loop over seeds and get track parameters
     paramseeds.clear();
@@ -602,7 +603,7 @@ void ACTSSeededCKFTrackingProc::processEvent(LCEvent *evt) {
         _fitFails++;
       }
     }
-  }
+  //}
 
   // Save the output seed collection
   evt->addCollection(seedCollection, _outputSeedCollection);

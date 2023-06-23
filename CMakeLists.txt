@@ -52,6 +52,7 @@ ADD_LIBRARY(ACTSTracking SHARED
   ./src/GeometryIdSelector.cxx
   ./src/GeometryIdMappingTool.cxx
   ./src/Helpers.cxx
+  ./src/LUXEDuplicateRemoval.cxx
   )
 TARGET_INCLUDE_DIRECTORIES(ACTSTracking
   PRIVATE

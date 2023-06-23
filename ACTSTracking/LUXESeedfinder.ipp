@@ -6,7 +6,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include "Acts/Seeding/SeedFilter.hpp"
+#include "LUXESeedFilter.hpp"
 
 #include <cmath>
 #include <numeric>
@@ -56,8 +56,8 @@ void Seedfinder<external_spacepoint_t, platform_t>::createSeedsForGroup(
       float deltaY = yM - yB;
       if (deltaZ < 10)  continue;
       if (deltaZ > 120) continue;
-      if (deltaX/xM < 4.89e-2 || deltaX/xM > 5.07e-2) continue;
-      if (std::fabs(deltaY)/xM > 8e-4 ) continue;
+      if (deltaX/(deltaZ*xM) < 4.9e-4 || deltaX/(deltaZ*xM) > 5.08e-4) continue;
+      if (std::fabs(deltaY)/xM > 1e-3 ) continue;
       state.compatBottomSP.push_back(bottomSP);
     }
     // no bottom SP found -> try next spM
@@ -76,8 +76,8 @@ void Seedfinder<external_spacepoint_t, platform_t>::createSeedsForGroup(
       float deltaY = yT - yM;
       if (deltaZ < 10)  continue;
       if (deltaZ > 120) continue;
-      if (deltaX/xM < 4.89e-2 || deltaX/xM > 5.07e-2) continue;
-      if (std::fabs(deltaY)/xM > 8e-4 ) continue;
+      if (deltaX/(deltaZ*xM) < 4.9e-4 || deltaX/(deltaZ*xM) > 5.08e-4) continue;
+      if (std::fabs(deltaY)/xM > 1e-3 ) continue;
       state.compatTopSP.push_back(topSP);
     }
     if (state.compatTopSP.empty()) {
@@ -192,7 +192,7 @@ void Seedfinder<external_spacepoint_t, platform_t>::createSeedsForGroup(
         if ((deltaCotTheta2 - error2 > 0) &&
             (dCotThetaMinusError2 >
              p2scatter * m_config.sigmaScattering * m_config.sigmaScattering)) {
-//          continue;
+          continue;
         }
         // A and B allow calculation of impact params in U/V plane with linear
         // function

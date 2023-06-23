@@ -539,7 +539,7 @@ void ACTSProcBase::buildDetector() {
       lConfig.localAxes = "XYZ";
       lConfig.parseRanges.push_back({Acts::binX, {0, 600}});
       lConfig.parseRanges.push_back({Acts::binZ, {3900, 4300}});
-      lConfig.splitConfigs.push_back({Acts::binZ, 10});
+      lConfig.splitConfigs.push_back({Acts::binZ, 50});
       // Save
       layerBuilderConfig.layerConfigurations[2].push_back(lConfig);
     }
